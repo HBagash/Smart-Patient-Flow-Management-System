@@ -1,15 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends 'base.html' %}
+{% block content %}
+<h2>YOLOv8 Detection Test</h2>
+<p>Number of objects detected: {{ num_detections }}</p>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YOLOv8 Detection Test</title>
-</head>
-
-<body>
-    <h1>Detection Test Page</h1>
-    <p>{{ message }}</p>
-</body>
-
-</html>
+<img src="{% static 'images/sample.jpg' %}" alt="Sample Image">
+{% endblock %}
