@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Latest Detection Record</h2>
+{% if record %}
+<p>Time: {{ record.timestamp }}</p>
+<p>Number of People: {{ record.count }}</p>
+{% else %}
+<p>No detection records available.</p>
+{% endif %}
+{% endblock %}
