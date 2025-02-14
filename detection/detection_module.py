@@ -80,11 +80,7 @@ def compute_iou(box1, box2):
 
 def detection_loop():
     with mss.mss() as sct:
-        if len(sct.monitors) < 4:
-            print("[ERROR] You don't have a third monitor connected.")
-            return
-
-        monitor = sct.monitors[3]
+        monitor = sct.monitors[0]
         print(f"[INFO] Capturing from monitor: {monitor}")
 
         while True:
@@ -95,11 +91,7 @@ def detection_loop():
 
 def generate_video_stream():
     with mss.mss() as sct:
-        if len(sct.monitors) < 4:
-            print("[ERROR] You don't have a third monitor connected.")
-            return
-
-        monitor = sct.monitors[3]
+        monitor = sct.monitors[0]
         print(f"[INFO] Streaming from monitor: {monitor}")
 
         while True:
