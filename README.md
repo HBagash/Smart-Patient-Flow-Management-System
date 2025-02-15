@@ -1,1 +1,22 @@
 # Smart-Patient-Flow-Management-System
+
+If you're running into permission issues when attempting to operate this software enter this command in powershell: Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
+
+Set up a new python virtual environment:
+python -m venv venv
+
+Activate this new virtual environment:
+venv\Scripts\Activate
+
+python -m pip install --upgrade pip
+
+You may need to manually install PyTorch if you require CUDA:
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+Now you can install all the other dependencies:
+pip install -r requirements.txt
+
+To run the software:
+python manage.py runserver
+
+To stop the run simply go to terminal and press "CTRL + C"
