@@ -1,47 +1,74 @@
 from django.shortcuts import render
-from django.http import StreamingHttpResponse
-import cv2
-import time
-
-# Import functions from your detection module
-from .detection_module import (
-    capture_screen,
-    perform_detection_on_frame,
-    generate_video_stream,
-)
-
-# Import the model for storing detection records (if needed)
+from django.http import StreamingHttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .detection_module import capture_screen, perform_detection_on_frame, generate_video_stream
+from . import detection_module
 from .models import DetectionRecord
+import json
+
 
 def latest_detection(request):
-    """
-    Retrieve the latest detection record and render it.
-    """
     record = DetectionRecord.objects.order_by('-timestamp').first()
     context = {'record': record}
     return render(request, 'detection/latest.html', context)
 
 def video_feed(request):
-    """
-    Streams processed video frames (with bounding boxes and labels)
-    as an MJPEG stream.
-    """
     return StreamingHttpResponse(
         generate_video_stream(),
         content_type='multipart/x-mixed-replace; boundary=frame'
     )
 
 def test_detection(request):
-    """
-    Performs a single detection on a captured frame and displays the person count.
-    """
-    frame = capture_screen()
-    processed_frame, person_count = perform_detection_on_frame(frame)
+    import mss
+    with mss.mss() as sct:
+        monitor = sct.monitors[1]
+        frame = capture_screen(sct, monitor)
+        processed_frame, person_count = perform_detection_on_frame(frame)
     context = {'count': person_count}
     return render(request, 'detection/test.html', context)
 
 def video_view(request):
-    """
-    Renders an HTML page that embeds the live video feed.
-    """
     return render(request, 'detection/video.html')
+
+@csrf_exempt
+def update_detection_zones_multiple(request):
+    """
+    Expects POST with:
+      rects: JSON array of [ [x1,y1,x2,y2], [x1,y1,x2,y2], ... ]
+      origWidth, origHeight: the original subregion size
+    We'll store them in detection_module.DETECTION_ZONES as a list of dicts:
+      [ {'coords': (x1,y1,x2,y2)}, ...]
+    """
+    if request.method == "POST":
+        try:
+            rects_str = request.POST.get("rects")
+            rects_list = json.loads(rects_str)
+
+            origWidth = int(request.POST.get("origWidth"))
+            origHeight = int(request.POST.get("origHeight"))
+
+            zones = []
+            for rect in rects_list:
+                x1, y1, x2, y2 = rect
+                zones.append({"coords": (x1, y1, x2, y2)})
+
+            detection_module.DETECTION_ZONES = {
+                "squares": zones,
+                "origWidth": origWidth,
+                "origHeight": origHeight,
+            }
+
+            return JsonResponse({"status": "success", "zones": zones})
+        except Exception as e:
+            return JsonResponse({"status": "error", "error": str(e)})
+    else:
+        return JsonResponse({"status": "error", "error": "POST request required"})
+
+
+@csrf_exempt
+def reset_detection_zone(request):
+    if request.method == "POST":
+        detection_module.DETECTION_ZONES = None
+        return JsonResponse({"status": "success", "zone": None})
+    else:
+        return JsonResponse({"status": "error", "error": "POST request required"})
