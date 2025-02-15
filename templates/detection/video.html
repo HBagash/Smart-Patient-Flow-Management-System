@@ -1,5 +1,188 @@
 {% extends 'base.html' %}
+{% load static %}
+
 {% block content %}
-<h2>Real-Time Video Feed</h2>
-<img src="{% url 'video_feed' %}" alt="Live Video Feed">
+<style>
+    #videoContainer {
+        margin-top: 20px;
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    h2 {
+        font-family: Arial, sans-serif;
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    #videoFeed {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+    #fabricCanvas {
+        display: block;
+    }
+
+    button {
+        background-color: #007BFF;
+        color: #fff;
+        padding: 10px 16px;
+        margin-right: 8px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+    }
+
+    button:hover {
+        background-color: #0056b3;
+    }
+
+    .button-container {
+        margin-bottom: 20px;
+    }
+</style>
+
+<h2>Fabric.js Multiple Squares - Black Out Everything Else</h2>
+
+<div class="button-container">
+    <button id="addSquareBtn">Add Square</button>
+    <button id="saveZones">Save Detection Zones</button>
+    <button id="resetZones">Reset Zones</button>
+</div>
+
+<div id="videoContainer">
+    <!-- Live video feed in the background -->
+    <img id="videoFeed" src="{% url 'video_feed' %}" alt="Live Video Feed"
+        style="position:absolute; top:0; left:0; z-index:1;" />
+
+    <!-- Fabric.js canvas on top -->
+    <canvas id="fabricCanvas" style="position:absolute; top:0; left:0; z-index:2;"></canvas>
+</div>
+
+<br />
+
+<!-- jQuery & Fabric.js -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js"></script>
+
+<script>
+    let canvas;
+    let scaleX = 1, scaleY = 1;
+
+    $(function () {
+        $("#videoFeed").on("load", function () {
+            const displayWidth = $(this).width();
+            const displayHeight = $(this).height();
+
+            $("#videoContainer").css({
+                width: displayWidth + "px",
+                height: displayHeight + "px",
+                position: "relative",
+            });
+
+            const fabricCanvasEl = document.getElementById("fabricCanvas");
+            fabricCanvasEl.width = displayWidth;
+            fabricCanvasEl.height = displayHeight;
+
+            if (!canvas) {
+                canvas = new fabric.Canvas("fabricCanvas", {
+                    backgroundColor: "transparent",
+                });
+            } else {
+                canvas.setWidth(displayWidth);
+                canvas.setHeight(displayHeight);
+            }
+
+            const actualWidth = $("#videoFeed").prop("naturalWidth");
+            const actualHeight = $("#videoFeed").prop("naturalHeight");
+            scaleX = actualWidth / displayWidth;
+            scaleY = actualHeight / displayHeight;
+
+            canvas.renderAll();
+        });
+
+        $("#addSquareBtn").click(function () {
+            const rect = new fabric.Rect({
+                left: 50,
+                top: 50,
+                width: 100,
+                height: 100,
+                fill: "rgba(255,0,0,0.2)",
+                stroke: "red",
+                strokeWidth: 2,
+                hasRotatingPoint: false,
+                objectCaching: false,
+            });
+            canvas.add(rect);
+            canvas.setActiveObject(rect);
+            canvas.renderAll();
+        });
+
+        $("#saveZones").click(function () {
+            const objects = canvas.getObjects().filter(obj => obj.type === "rect");
+            if (!objects.length) {
+                alert("No squares found on the canvas!");
+                return;
+            }
+
+            const rectsData = objects.map((obj) => {
+                const bbox = obj.getBoundingRect();
+                const x1_disp = Math.round(bbox.left);
+                const y1_disp = Math.round(bbox.top);
+                const x2_disp = x1_disp + Math.round(bbox.width);
+                const y2_disp = y1_disp + Math.round(bbox.height);
+
+                const actualX1 = Math.round(x1_disp * scaleX);
+                const actualY1 = Math.round(y1_disp * scaleY);
+                const actualX2 = Math.round(x2_disp * scaleX);
+                const actualY2 = Math.round(y2_disp * scaleY);
+
+                return [actualX1, actualY1, actualX2, actualY2];
+            });
+
+            const actualWidth = $("#videoFeed").prop("naturalWidth");
+            const actualHeight = $("#videoFeed").prop("naturalHeight");
+
+            $.ajax({
+                url: "{% url 'update_detection_zones_multiple' %}",
+                type: "POST",
+                data: {
+                    rects: JSON.stringify(rectsData),
+                    origWidth: actualWidth,
+                    origHeight: actualHeight,
+                    csrfmiddlewaretoken: "{{ csrf_token }}",
+                },
+                success: function (resp) {
+                    alert("Multiple detection squares saved!");
+                    $("#videoFeed").trigger("load");
+                },
+                error: function (xhr, status, error) {
+                    alert("Error: " + error);
+                },
+            });
+        });
+
+        $("#resetZones").click(function () {
+            $.ajax({
+                url: "{% url 'reset_detection_zone' %}",
+                type: "POST",
+                data: { csrfmiddlewaretoken: "{{ csrf_token }}" },
+                success: function () {
+                    alert("Detection zones reset. Full screen again.");
+                    canvas.clear();
+                    $("#videoFeed").trigger("load");
+                },
+                error: function (xhr, status, error) {
+                    alert("Error resetting: " + error);
+                },
+            });
+        });
+    });
+</script>
 {% endblock %}
