@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<h2>Queue Dashboard</h2>
+
+<div style="margin-bottom:20px;">
+    <p><strong>Average Number in Queue (L):</strong> {{ average_count }}</p>
+    <p><strong>Estimated Arrival Rate (λ):</strong> {{ arrival_rate }} (assumed equal to L)</p>
+    <p><strong>Service Rate (μ):</strong> {{ service_rate }} people per minute</p>
+    {% if waiting_time|stringformat:"s" == "System unstable (λ ≥ μ)" %}
+    <p><strong>Estimated Average Waiting Time (W):</strong> System unstable (λ ≥ μ)</p>
+    {% else %}
+    <p><strong>Estimated Average Waiting Time (W):</strong> {{ waiting_time }} minutes</p>
+    {% endif %}
+    <p><strong>Total Records in Last 24 Hours:</strong> {{ record_count }}</p>
+</div>
+
+<canvas id="queueChart" width="600" height="300"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    var ctx = document.getElementById('queueChart').getContext('2d');
+    var queueChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ["00:00", "06:00", "12:00", "18:00", "24:00"],
+            datasets: [{
+                label: 'Average Detection Count',
+                data: [{{ average_count }}, {{ average_count }}, {{ average_count }}, {{ average_count }}, {{ average_count }}],
+
+    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1,
+                fill: true
+          }]
+      },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+  });
+</script>
+{% endblock %}
