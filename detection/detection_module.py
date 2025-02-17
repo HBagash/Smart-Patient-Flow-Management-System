@@ -4,137 +4,136 @@ import numpy as np
 import cv2
 import mss
 import torch
+from datetime import datetime
+from django.utils import timezone  # for timezone-aware datetimes
+
 from ultralytics import YOLO
 
-# Parameters
+# Import our custom tracker from deep_sort_realtime wrapper
+from .custom_tracker import Tracker
+
+# Instantiate the tracker globally
+tracker = Tracker()
+
+####################
+# CONFIG & GLOBALS #
+####################
 REFRESH_INTERVAL = 0.1
 CONFIDENCE_THRESHOLD = 0.4
-IOU_THRESHOLD = 0.5
 
-DETECTION_ZONES = None
-
+# YOLO model setup
 model_path = os.path.join(os.path.dirname(__file__), "yolov8-heads.pt")
 model = YOLO(model_path)
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
 def capture_screen(sct, monitor):
     """
-    1) Capture the entire screen (BGRA).
-    2) If DETECTION_ZONES is defined, black out everything except the given squares.
+    Capture the screen using MSS and return an OpenCV BGR frame.
     """
     screenshot = sct.grab(monitor)
     img = np.array(screenshot)
-
-    global DETECTION_ZONES
-    if DETECTION_ZONES and "squares" in DETECTION_ZONES:
-        mask = np.zeros_like(img)
-
-        for zone in DETECTION_ZONES["squares"]:
-            x1, y1, x2, y2 = zone["coords"]
-            x1 = max(0, x1)
-            y1 = max(0, y1)
-            x2 = min(x2, img.shape[1])
-            y2 = min(y2, img.shape[0])
-
-            mask[y1:y2, x1:x2] = img[y1:y2, x1:x2]
-
-        img = mask
-
-    # Convert from BGRA to BGR for OpenCV
     frame = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
     return frame
 
-def perform_detection_on_frame(frame):
+def detect_and_track(frame):
     """
-    Run the YOLO model on frame. Draw bounding boxes. Return (frame_with_boxes, head_count).
+    Run YOLO on the frame, convert detections, update the tracker,
+    and draw bounding boxes with track IDs.
+    Returns (annotated_frame, tracks).
     """
-    results = model(frame, conf=CONFIDENCE_THRESHOLD, iou=0.25)
-    head_count = 0
-    detected_boxes = []
+    # 1) YOLO inference
+    results = model(frame, conf=CONFIDENCE_THRESHOLD, iou=0.5)
+    detections = results[0]
 
-    if results and hasattr(results[0], "boxes") and results[0].boxes is not None:
-        print("\n[DEBUG] Detected objects:")
-        for result in results:
-            for box in result.boxes:
-                coords = box.xyxy[0].cpu().numpy()
-                x1, y1, x2, y2 = map(int, coords)
-                confidence = box.conf.item()
-                cls = int(box.cls.item())
+    # 2) Build detection list in format: [x1, y1, x2, y2, conf]
+    detection_list = []
+    for box in detections.boxes:
+        xyxy = box.xyxy[0].cpu().numpy()  # [x1, y1, x2, y2]
+        conf = float(box.conf[0].cpu().numpy())
+        if conf >= CONFIDENCE_THRESHOLD:
+            x1, y1, x2, y2 = map(float, xyxy)
+            detection_list.append([x1, y1, x2, y2, conf])
+    
+    # 3) Update tracker using our custom tracker
+    tracks = tracker.update(frame, detection_list)
 
-                print(f" - Class {cls} ({model.names[cls]}), Confidence {confidence:.2f}")
-
-                duplicate = any(
-                    compute_iou((x1, y1, x2, y2), prev) > IOU_THRESHOLD
-                    for prev in detected_boxes
-                )
-                if duplicate:
-                    continue
-
-                detected_boxes.append((x1, y1, x2, y2))
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                label = f"{model.names[cls]}: {confidence:.2f}"
-                cv2.putText(
-                    frame,
-                    label,
-                    (x1, max(y1 - 10, 10)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (0, 255, 0),
-                    2,
-                )
-
-                if cls == 1 and confidence >= CONFIDENCE_THRESHOLD:
-                    head_count += 1
-
-    print(f"[DEBUG] Head count detected: {head_count}")
-    return frame, head_count
-
-def compute_iou(box1, box2):
-    x1_1, y1_1, x2_1, y2_1 = box1
-    x1_2, y1_2, x2_2, y2_2 = box2
-
-    inter_x1 = max(x1_1, x1_2)
-    inter_y1 = max(y1_1, y1_2)
-    inter_x2 = min(x2_1, x2_2)
-    inter_y2 = min(y2_1, y2_2)
-
-    inter_area = max(0, inter_x2 - inter_x1) * max(0, inter_y2 - inter_y1)
-    box1_area = (x2_1 - x1_1) * (y2_1 - y1_1)
-    box2_area = (x2_2 - x1_2) * (y2_2 - y1_2)
-    union_area = box1_area + box2_area - inter_area
-    return inter_area / union_area if union_area != 0 else 0
+    # 4) Draw bounding boxes with IDs on a copy of the frame
+    annotated_frame = frame.copy()
+    for track_id, bbox in tracks:
+        x1, y1, x2, y2 = map(int, bbox)
+        cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.putText(annotated_frame, f"ID: {track_id}", (x1, max(y1-10, 10)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+    return annotated_frame, tracks
 
 def detection_loop():
     """
-    A background loop that continuously captures the screen and runs detection
-    (e.g., for logging or other tasks). You can keep this separate from
-    the streaming function if you want real-time logs or other actions.
+    Continuously captures frames, performs detection and tracking,
+    and updates PersonSession records.
     """
+    from .models import PersonSession
     with mss.mss() as sct:
         monitor = sct.monitors[1]
         print(f"[INFO] Capturing from monitor: {monitor}")
+        known_ids = set()
         while True:
             frame = capture_screen(sct, monitor)
-            processed_frame, count = perform_detection_on_frame(frame)
-            print(f"[DEBUG] Detected {count} heads in the frame. (detection_loop)")
+            annotated_frame, tracks = detect_and_track(frame)
+
+            current_ids = set()
+            for track in tracks:
+                track_id = str(track[0])
+                current_ids.add(track_id)
+                open_session = PersonSession.objects.filter(
+                    track_id=track_id,
+                    exit_timestamp__isnull=True
+                ).first()
+                if open_session is None:
+                    PersonSession.objects.create(
+                        track_id=track_id,
+                        enter_timestamp=timezone.now()
+                    )
+            # Update sessions for disappeared tracks
+            disappeared = known_ids - current_ids
+            for track_id in disappeared:
+                session = PersonSession.objects.filter(
+                    track_id=track_id,
+                    exit_timestamp__isnull=True
+                ).first()
+                if session:
+                    session.exit_timestamp = timezone.now()
+                    session.duration_seconds = (
+                        session.exit_timestamp - session.enter_timestamp
+                    ).total_seconds()
+                    session.save()
+                    print(f"[INFO] Track {track_id} exited. Duration: {session.duration_seconds:.2f} sec")
+            known_ids = current_ids
             time.sleep(REFRESH_INTERVAL)
 
 def generate_video_stream():
     """
-    A generator function that yields JPEG-encoded frames for streaming in the browser.
+    Generator that yields JPEG-encoded frames for streaming.
     """
     with mss.mss() as sct:
         monitor = sct.monitors[1]
         print(f"[INFO] Streaming from monitor: {monitor}")
         while True:
             frame = capture_screen(sct, monitor)
-            processed_frame, _ = perform_detection_on_frame(frame)
-            ret, jpeg = cv2.imencode('.jpg', processed_frame)
+            annotated_frame, _ = detect_and_track(frame)
+            ret, jpeg = cv2.imencode('.jpg', annotated_frame)
             if not ret:
                 continue
             yield (
-                b"--frame\r\n"
-                b"Content-Type: image/jpeg\r\n\r\n" + jpeg.tobytes() + b"\r\n\r\n"
+                b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n'
             )
             time.sleep(REFRESH_INTERVAL)
+
+def perform_detection_on_frame(frame):
+    """
+    Wrapper that returns the annotated frame and head count (number of tracks).
+    """
+    annotated_frame, tracks = detect_and_track(frame)
+    head_count = len(tracks)
+    return annotated_frame, head_count

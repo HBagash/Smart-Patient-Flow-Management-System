@@ -5,7 +5,7 @@ from .detection_module import capture_screen, perform_detection_on_frame, genera
 from . import detection_module
 from .models import DetectionRecord
 import json
-
+import mss
 
 def latest_detection(request):
     record = DetectionRecord.objects.order_by('-timestamp').first()
@@ -19,7 +19,6 @@ def video_feed(request):
     )
 
 def test_detection(request):
-    import mss
     with mss.mss() as sct:
         monitor = sct.monitors[1]
         frame = capture_screen(sct, monitor)
@@ -34,36 +33,30 @@ def video_view(request):
 def update_detection_zones_multiple(request):
     """
     Expects POST with:
-      rects: JSON array of [ [x1,y1,x2,y2], [x1,y1,x2,y2], ... ]
-      origWidth, origHeight: the original subregion size
-    We'll store them in detection_module.DETECTION_ZONES as a list of dicts:
-      [ {'coords': (x1,y1,x2,y2)}, ...]
+      rects: JSON array of [ [x1,y1,x2,y2], ... ]
+      origWidth, origHeight: original dimensions of the subregion.
+    Stores them in detection_module.DETECTION_ZONES.
     """
     if request.method == "POST":
         try:
             rects_str = request.POST.get("rects")
             rects_list = json.loads(rects_str)
-
             origWidth = int(request.POST.get("origWidth"))
             origHeight = int(request.POST.get("origHeight"))
-
             zones = []
             for rect in rects_list:
                 x1, y1, x2, y2 = rect
                 zones.append({"coords": (x1, y1, x2, y2)})
-
             detection_module.DETECTION_ZONES = {
                 "squares": zones,
                 "origWidth": origWidth,
                 "origHeight": origHeight,
             }
-
             return JsonResponse({"status": "success", "zones": zones})
         except Exception as e:
             return JsonResponse({"status": "error", "error": str(e)})
     else:
         return JsonResponse({"status": "error", "error": "POST request required"})
-
 
 @csrf_exempt
 def reset_detection_zone(request):
