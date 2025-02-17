@@ -9,97 +9,141 @@ from django.utils import timezone  # for timezone-aware datetimes
 
 from ultralytics import YOLO
 
-# Import our custom tracker from deep_sort_realtime wrapper
-from .custom_tracker import Tracker
-
-# Instantiate the tracker globally
-tracker = Tracker()
-
 ####################
 # CONFIG & GLOBALS #
 ####################
-REFRESH_INTERVAL = 0.1
-CONFIDENCE_THRESHOLD = 0.4
+REFRESH_INTERVAL = 0
+CONFIDENCE_THRESHOLD = 0.35
+TRACKER_CONFIG = 'bytetrack.yaml'  # or full path: './ultralytics/trackers/bytetrack.yaml'
 
-# YOLO model setup
 model_path = os.path.join(os.path.dirname(__file__), "yolov8-heads.pt")
 model = YOLO(model_path)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
-def capture_screen(sct, monitor):
+def capture_screen(sct, monitor, target_width=640):
     """
-    Capture the screen using MSS and return an OpenCV BGR frame.
+    Capture the screen using MSS, resize it to target_width, return an OpenCV BGR frame.
     """
     screenshot = sct.grab(monitor)
     img = np.array(screenshot)
     frame = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+    h, w = frame.shape[:2]
+    scale = target_width / float(w)
+    target_height = int(h * scale)
+    #frame = cv2.resize(frame, (target_width, target_height))
     return frame
+
+import time  # Import time module for measuring performance
 
 def detect_and_track(frame):
     """
-    Run YOLO on the frame, convert detections, update the tracker,
-    and draw bounding boxes with track IDs.
-    Returns (annotated_frame, tracks).
+    Runs YOLOv8 tracking with ByteTrack, measuring the time taken for:
+    - Preprocessing (capturing and resizing the frame)
+    - Inference (object detection using YOLOv8)
+    - Tracking (ByteTrack updating object IDs)
+    - Total processing time
     """
-    # 1) YOLO inference
-    results = model(frame, conf=CONFIDENCE_THRESHOLD, iou=0.5)
-    detections = results[0]
+    total_start = time.time()  # Start total processing timer
 
-    # 2) Build detection list in format: [x1, y1, x2, y2, conf]
-    detection_list = []
-    for box in detections.boxes:
-        xyxy = box.xyxy[0].cpu().numpy()  # [x1, y1, x2, y2]
-        conf = float(box.conf[0].cpu().numpy())
-        if conf >= CONFIDENCE_THRESHOLD:
-            x1, y1, x2, y2 = map(float, xyxy)
-            detection_list.append([x1, y1, x2, y2, conf])
+    # Step 1: Preprocessing Timer
+    preprocess_start = time.time()
+    input_frame = frame.copy()  # Avoid modifying original frame
+    preprocess_end = time.time()
+    preprocess_time = (preprocess_end - preprocess_start) * 1000  # Convert to ms
+
+    # Step 2: Inference (YOLOv8 Detection)
+    inference_start = time.time()
+    results = model.track(
+        source=input_frame,
+        conf=CONFIDENCE_THRESHOLD,
+        iou=0.5,
+        tracker=TRACKER_CONFIG,
+        persist=True,
+        show=False
+    )
+    inference_end = time.time()
+    inference_time = (inference_end - inference_start) * 1000  # Convert to ms
+
+    if not results:
+        return frame, []
+
+    # Step 3: Tracking (ByteTrack Processing)
+    tracking_start = time.time()
+    final_result = results[-1]
+    tracks = getattr(final_result, 'boxes', [])
     
-    # 3) Update tracker using our custom tracker
-    tracks = tracker.update(frame, detection_list)
-
-    # 4) Draw bounding boxes with IDs on a copy of the frame
     annotated_frame = frame.copy()
-    for track_id, bbox in tracks:
-        x1, y1, x2, y2 = map(int, bbox)
+    track_list = []
+
+    for box in tracks:
+        track_id = box.id
+        if track_id is None:
+            continue
+        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+        conf = float(box.conf[0].item())
+
         cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(annotated_frame, f"ID: {track_id}", (x1, max(y1-10, 10)),
+        label = f"ID:{track_id} {conf:.2f}"
+        cv2.putText(annotated_frame, label, (x1, max(y1 - 10, 10)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-    return annotated_frame, tracks
+
+        track_list.append({
+            'track_id': str(track_id),
+            'bbox': (x1, y1, x2, y2),
+            'confidence': conf
+        })
+    
+    tracking_end = time.time()
+    tracking_time = (tracking_end - tracking_start) * 1000  # Convert to ms
+
+    # Step 4: Calculate Total Processing Time
+    total_end = time.time()
+    total_time = (total_end - total_start) * 1000  # Convert to ms
+
+    # Print performance metrics
+    print(f"[TIMING] Preprocessing: {preprocess_time:.2f}ms | "
+          f"Inference: {inference_time:.2f}ms | "
+          f"Tracking: {tracking_time:.2f}ms | "
+          f"Total: {total_time:.2f}ms")
+
+    return annotated_frame, track_list
+
 
 def detection_loop():
     """
-    Continuously captures frames, performs detection and tracking,
-    and updates PersonSession records.
+    Continuously captures frames, performs ByteTrack-based detection/tracking,
+    and updates PersonSession records in the DB.
     """
     from .models import PersonSession
     with mss.mss() as sct:
         monitor = sct.monitors[1]
         print(f"[INFO] Capturing from monitor: {monitor}")
-        known_ids = set()
-        while True:
-            frame = capture_screen(sct, monitor)
-            annotated_frame, tracks = detect_and_track(frame)
 
+        known_ids = set()
+        
+        while True:
+            frame = capture_screen(sct, monitor, target_width=640)
+            annotated_frame, track_list = detect_and_track(frame)
+            
             current_ids = set()
-            for track in tracks:
-                track_id = str(track[0])
+            for t in track_list:
+                track_id = t['track_id']
                 current_ids.add(track_id)
                 open_session = PersonSession.objects.filter(
-                    track_id=track_id,
-                    exit_timestamp__isnull=True
+                    track_id=track_id, exit_timestamp__isnull=True
                 ).first()
                 if open_session is None:
                     PersonSession.objects.create(
                         track_id=track_id,
                         enter_timestamp=timezone.now()
                     )
-            # Update sessions for disappeared tracks
+                    print(f"[INFO] New PersonSession for ID: {track_id}")
+            
             disappeared = known_ids - current_ids
             for track_id in disappeared:
                 session = PersonSession.objects.filter(
-                    track_id=track_id,
-                    exit_timestamp__isnull=True
+                    track_id=track_id, exit_timestamp__isnull=True
                 ).first()
                 if session:
                     session.exit_timestamp = timezone.now()
@@ -107,19 +151,20 @@ def detection_loop():
                         session.exit_timestamp - session.enter_timestamp
                     ).total_seconds()
                     session.save()
-                    print(f"[INFO] Track {track_id} exited. Duration: {session.duration_seconds:.2f} sec")
+                    print(f"[INFO] ID {track_id} left. Duration: {session.duration_seconds:.2f} sec")
+            
             known_ids = current_ids
             time.sleep(REFRESH_INTERVAL)
 
 def generate_video_stream():
     """
-    Generator that yields JPEG-encoded frames for streaming.
+    MJPEG stream generator. Captures frames and uses ByteTrack.
     """
     with mss.mss() as sct:
         monitor = sct.monitors[1]
         print(f"[INFO] Streaming from monitor: {monitor}")
         while True:
-            frame = capture_screen(sct, monitor)
+            frame = capture_screen(sct, monitor, target_width=640)
             annotated_frame, _ = detect_and_track(frame)
             ret, jpeg = cv2.imencode('.jpg', annotated_frame)
             if not ret:
@@ -132,8 +177,8 @@ def generate_video_stream():
 
 def perform_detection_on_frame(frame):
     """
-    Wrapper that returns the annotated frame and head count (number of tracks).
+    Helper for single-frame detection: returns (annotated_frame, number_of_tracks).
     """
-    annotated_frame, tracks = detect_and_track(frame)
-    head_count = len(tracks)
+    annotated_frame, track_list = detect_and_track(frame)
+    head_count = len(track_list)
     return annotated_frame, head_count
