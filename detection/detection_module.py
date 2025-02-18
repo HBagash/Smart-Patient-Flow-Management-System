@@ -5,161 +5,154 @@ import cv2
 import mss
 import torch
 from datetime import datetime
-from django.utils import timezone  # for timezone-aware datetimes
-
+from django.utils import timezone
 from ultralytics import YOLO
 
-####################
-# CONFIG & GLOBALS #
-####################
 REFRESH_INTERVAL = 0
 CONFIDENCE_THRESHOLD = 0.35
-TRACKER_CONFIG = 'bytetrack.yaml'  # or full path: './ultralytics/trackers/bytetrack.yaml'
+TRACKER_CONFIG = 'bytetrack.yaml'
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "yolov8x.pt")
 
-model_path = os.path.join(os.path.dirname(__file__), "yolov8-heads.pt")
-model = YOLO(model_path)
+model = YOLO(MODEL_PATH)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
+_contiguous_id_map = {}
+_next_contiguous_id = 1
+
+def get_contiguous_id(raw_id):
+    global _next_contiguous_id
+    if raw_id not in _contiguous_id_map:
+        _contiguous_id_map[raw_id] = str(_next_contiguous_id)
+        _next_contiguous_id += 1
+    return _contiguous_id_map[raw_id]
+
 def capture_screen(sct, monitor, target_width=640):
-    """
-    Capture the screen using MSS, resize it to target_width, return an OpenCV BGR frame.
-    """
     screenshot = sct.grab(monitor)
     img = np.array(screenshot)
-    frame = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-    h, w = frame.shape[:2]
-    scale = target_width / float(w)
-    target_height = int(h * scale)
-    #frame = cv2.resize(frame, (target_width, target_height))
-    return frame
+    return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
-import time  # Import time module for measuring performance
+def extract_appearance_feature(frame, bbox):
+    x1, y1, x2, y2 = map(int, bbox)
+    roi = frame[y1:y2, x1:x2]
+    if roi.size == 0:
+        return None
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    hist = cv2.calcHist([hsv], [0, 1, 2], None, [8,8,8], [0,180,0,256,0,256])
+    cv2.normalize(hist, hist)
+    return hist.flatten().tolist()
 
-def detect_and_track(frame):
-    """
-    Runs YOLOv8 tracking with ByteTrack, measuring the time taken for:
-    - Preprocessing (capturing and resizing the frame)
-    - Inference (object detection using YOLOv8)
-    - Tracking (ByteTrack updating object IDs)
-    - Total processing time
-    """
-    total_start = time.time()  # Start total processing timer
+def compute_iou(boxA, boxB):
+    xA = max(boxA[0], boxB[0])
+    yA = max(boxA[1], boxB[1])
+    xB = min(boxA[2], boxB[2])
+    yB = min(boxA[3], boxB[3])
+    interW = max(0, xB - xA)
+    interH = max(0, yB - yA)
+    interArea = interW * interH
+    areaA = (boxA[2]-boxA[0]) * (boxA[3]-boxA[1])
+    areaB = (boxB[2]-boxB[0]) * (boxB[3]-boxB[1])
+    return interArea / float(areaA + areaB - interArea + 1e-6)
 
-    # Step 1: Preprocessing Timer
-    preprocess_start = time.time()
-    input_frame = frame.copy()  # Avoid modifying original frame
-    preprocess_end = time.time()
-    preprocess_time = (preprocess_end - preprocess_start) * 1000  # Convert to ms
+def detect_and_track(frame, iou_thresh=0.3):
+    total_start = time.time()
+    raw_frame = frame.copy()
 
-    # Step 2: Inference (YOLOv8 Detection)
-    inference_start = time.time()
-    results = model.track(
-        source=input_frame,
+    raw_results = model(raw_frame, conf=CONFIDENCE_THRESHOLD, iou=0.5)
+    raw_boxes = []
+    for box in raw_results[0].boxes:
+        if hasattr(box, 'cls') and int(box.cls[0].item()) == 0:
+            coords = list(map(int, box.xyxy[0].tolist()))
+            conf = float(box.conf[0].item())
+            raw_boxes.append({'bbox': coords, 'confidence': conf})
+
+    annotated = raw_frame.copy()
+    for det in raw_boxes:
+        x1, y1, x2, y2 = det['bbox']
+        cv2.rectangle(annotated, (x1, y1), (x2, y2), (255, 0, 0), 2)
+
+    track_results = model.track(
+        source=raw_frame,
         conf=CONFIDENCE_THRESHOLD,
         iou=0.5,
         tracker=TRACKER_CONFIG,
         persist=True,
         show=False
     )
-    inference_end = time.time()
-    inference_time = (inference_end - inference_start) * 1000  # Convert to ms
-
-    if not results:
-        return frame, []
-
-    # Step 3: Tracking (ByteTrack Processing)
-    tracking_start = time.time()
-    final_result = results[-1]
-    tracks = getattr(final_result, 'boxes', [])
+    if not track_results:
+        print("[WARNING] No tracking results.")
+        return annotated, []
     
-    annotated_frame = frame.copy()
-    track_list = []
-
-    for box in tracks:
-        track_id = box.id
-        if track_id is None:
+    final_result = track_results[-1]
+    tracker_boxes = []
+    for box in getattr(final_result, 'boxes', []):
+        if box.id is None:
             continue
-        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+        if hasattr(box, 'cls') and int(box.cls[0].item()) != 0:
+            continue
+        coords = list(map(int, box.xyxy[0].tolist()))
         conf = float(box.conf[0].item())
+        tracker_boxes.append({'raw_id': str(box.id), 'bbox': coords, 'confidence': conf})
 
-        cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        label = f"ID:{track_id} {conf:.2f}"
-        cv2.putText(annotated_frame, label, (x1, max(y1 - 10, 10)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+    track_list = []
+    for det in raw_boxes:
+        best_match = None
+        best_iou = 0
+        for trk in tracker_boxes:
+            iou_val = compute_iou(det['bbox'], trk['bbox'])
+            if iou_val > best_iou:
+                best_iou = iou_val
+                best_match = trk
+        if best_match and best_iou > iou_thresh:
+            norm_id = get_contiguous_id(best_match['raw_id'])
+        else:
 
-        track_list.append({
-            'track_id': str(track_id),
-            'bbox': (x1, y1, x2, y2),
-            'confidence': conf
-        })
-    
-    tracking_end = time.time()
-    tracking_time = (tracking_end - tracking_start) * 1000  # Convert to ms
+            new_raw = f"new_{len(_contiguous_id_map)+1}"
+            norm_id = get_contiguous_id(new_raw)
+        det['track_id'] = norm_id
+        track_list.append(det)
 
-    # Step 4: Calculate Total Processing Time
+        x1, y1, x2, y2 = det['bbox']
+        cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.putText(annotated, f"ID:{norm_id} {det['confidence']:.2f}", (x1, max(y1-10,10)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
+
     total_end = time.time()
-    total_time = (total_end - total_start) * 1000  # Convert to ms
-
-    # Print performance metrics
-    print(f"[TIMING] Preprocessing: {preprocess_time:.2f}ms | "
-          f"Inference: {inference_time:.2f}ms | "
-          f"Tracking: {tracking_time:.2f}ms | "
-          f"Total: {total_time:.2f}ms")
-
-    return annotated_frame, track_list
-
+    print(f"[TIMING] Total: {(total_end - total_start)*1000:.2f}ms")
+    return annotated, track_list
 
 def detection_loop():
-    """
-    Continuously captures frames, performs ByteTrack-based detection/tracking,
-    and updates PersonSession records in the DB.
-    """
     from .models import PersonSession
     with mss.mss() as sct:
         monitor = sct.monitors[1]
         print(f"[INFO] Capturing from monitor: {monitor}")
-
-        known_ids = set()
-        
         while True:
             frame = capture_screen(sct, monitor, target_width=640)
             annotated_frame, track_list = detect_and_track(frame)
-            
             current_ids = set()
             for t in track_list:
-                track_id = t['track_id']
-                current_ids.add(track_id)
-                open_session = PersonSession.objects.filter(
-                    track_id=track_id, exit_timestamp__isnull=True
-                ).first()
-                if open_session is None:
+                norm_id = t['track_id']
+                bbox = t['bbox']
+                current_ids.add(norm_id)
+                if not PersonSession.objects.filter(track_id=norm_id, exit_timestamp__isnull=True).exists():
+                    feature = extract_appearance_feature(frame, bbox)
                     PersonSession.objects.create(
-                        track_id=track_id,
-                        enter_timestamp=timezone.now()
+                        track_id=norm_id,
+                        enter_timestamp=timezone.now(),
+                        appearance_feature=feature
                     )
-                    print(f"[INFO] New PersonSession for ID: {track_id}")
-            
-            disappeared = known_ids - current_ids
-            for track_id in disappeared:
-                session = PersonSession.objects.filter(
-                    track_id=track_id, exit_timestamp__isnull=True
-                ).first()
+                    print(f"[INFO] New PersonSession for ID: {norm_id}")
+                    
+            for norm_id in set().union(*[ {s.track_id} for s in PersonSession.objects.filter(exit_timestamp__isnull=True) ]) - current_ids:
+                session = PersonSession.objects.filter(track_id=norm_id, exit_timestamp__isnull=True).first()
                 if session:
                     session.exit_timestamp = timezone.now()
-                    session.duration_seconds = (
-                        session.exit_timestamp - session.enter_timestamp
-                    ).total_seconds()
+                    session.duration_seconds = (session.exit_timestamp - session.enter_timestamp).total_seconds()
                     session.save()
-                    print(f"[INFO] ID {track_id} left. Duration: {session.duration_seconds:.2f} sec")
-            
-            known_ids = current_ids
+                    print(f"[INFO] ID {norm_id} left. Duration: {session.duration_seconds:.2f} sec")
             time.sleep(REFRESH_INTERVAL)
 
 def generate_video_stream():
-    """
-    MJPEG stream generator. Captures frames and uses ByteTrack.
-    """
     with mss.mss() as sct:
         monitor = sct.monitors[1]
         print(f"[INFO] Streaming from monitor: {monitor}")
@@ -167,18 +160,11 @@ def generate_video_stream():
             frame = capture_screen(sct, monitor, target_width=640)
             annotated_frame, _ = detect_and_track(frame)
             ret, jpeg = cv2.imencode('.jpg', annotated_frame)
-            if not ret:
-                continue
-            yield (
-                b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n'
-            )
+            if ret:
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
             time.sleep(REFRESH_INTERVAL)
 
 def perform_detection_on_frame(frame):
-    """
-    Helper for single-frame detection: returns (annotated_frame, number_of_tracks).
-    """
     annotated_frame, track_list = detect_and_track(frame)
-    head_count = len(track_list)
-    return annotated_frame, head_count
+    return annotated_frame, len(track_list)
