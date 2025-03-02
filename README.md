@@ -20,3 +20,7 @@ To run the software:
 python manage.py runserver
 
 To stop the run simply go to terminal and press "CTRL + C"
+
+To populate database type this in the terminal: python manage.py simulate_data --sessions=1000 --days=56
+
+(Creates 1000 sessions for the past 8 weeks)
