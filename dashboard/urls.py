@@ -2,5 +2,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.dashboard, name='dashboard_home'),
+    path('', views.dashboard_all_in_one, name='dashboard_home'),
+    path('active-sessions-api/', views.active_sessions_api, name='active_sessions_api'),
+    path('export-csv/', views.export_dashboard_csv, name='dashboard_export_csv'),
 ]
