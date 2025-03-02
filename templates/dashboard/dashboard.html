@@ -1,45 +1,543 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block content %}
-<h2>Queue Dashboard</h2>
 
-<div style="margin-bottom:20px;">
-    <p><strong>Average Number in Queue (L):</strong> {{ average_count }}</p>
-    <p><strong>Estimated Arrival Rate (λ):</strong> {{ arrival_rate }} (assumed equal to L)</p>
-    <p><strong>Service Rate (μ):</strong> {{ service_rate }} people per minute</p>
-    {% if waiting_time|stringformat:"s" == "System unstable (λ ≥ μ)" %}
-    <p><strong>Estimated Average Waiting Time (W):</strong> System unstable (λ ≥ μ)</p>
+{% block content %}
+<div class="container mt-4">
+
+  <!-- 1) Dynamic Title based on custom range or fallback -->
+  {% if start_time and end_time and start_time|date:'U' != end_time|date:'U' %}
+    <h1>All-In-One Dashboard ({{ start_time|date:"d/m/Y H:i" }} - {{ end_time|date:"d/m/Y H:i" }})</h1>
+  {% else %}
+    <h1>All-In-One Dashboard (Last 24 Hours)</h1>
+  {% endif %}
+
+  <!-- 2) Time Range Form (UK format: dd/mm/yyyy HH:MM) -->
+  <form method="GET" action="">
+    <div class="row mb-3">
+      <div class="col-md-3">
+        <label class="form-label">Start (dd/mm/yyyy HH:MM)</label>
+        <input type="text" name="start" class="form-control"
+               placeholder="01/02/2025 09:00"
+               value="{% if start_time %}{{ start_time|date:'d/m/Y H:i' }}{% endif %}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">End (dd/mm/yyyy HH:MM)</label>
+        <input type="text" name="end" class="form-control"
+               placeholder="02/02/2025 18:00"
+               value="{% if end_time %}{{ end_time|date:'d/m/Y H:i' }}{% endif %}">
+      </div>
+      <!-- Preserve outlier + simulated flags as hidden fields -->
+      <input type="hidden" name="simulated" value="{{ show_simulated|yesno:'true,false' }}">
+      {% if exclude_outliers %}
+        <input type="hidden" name="exclude_outliers" value="1">
+      {% endif %}
+      <div class="col-md-2">
+        <label>&nbsp;</label>
+        <button type="submit" class="btn btn-primary form-control">Apply</button>
+      </div>
+    </div>
+  </form>
+
+  <!-- 3) Show user whether we are on real or simulated data -->
+  <p>{{ current_data_text }}</p>
+  <p>
+    Data from: <strong>{{ start_time|date:'d/m/Y H:i' }}</strong>
+    to <strong>{{ end_time|date:'d/m/Y H:i' }}</strong>
+  </p>
+
+  <!-- 4) Outlier Toggle via a small form that preserves existing GET -->
+  <div class="mb-3">
+    {% if exclude_outliers %}
+      <!-- User is currently excluding outliers, so we remove exclude_outliers by NOT including it. -->
+      <form method="GET" action="" style="display:inline;">
+        <!-- Keep every existing query param except 'exclude_outliers'. -->
+        {% for k, v in request.GET.items %}
+          {% if k != 'exclude_outliers' %}
+            <input type="hidden" name="{{ k }}" value="{{ v }}">
+          {% endif %}
+        {% endfor %}
+        <button type="submit" class="btn btn-secondary">
+          Show All (Include Outliers)
+        </button>
+      </form>
+      <span class="ms-3">Currently <strong>excluding</strong> outliers.</span>
+
     {% else %}
-    <p><strong>Estimated Average Waiting Time (W):</strong> {{ waiting_time }} minutes</p>
+      <!-- User is currently including outliers, so we add exclude_outliers=1. -->
+      <form method="GET" action="" style="display:inline;">
+        {% for k, v in request.GET.items %}
+          <input type="hidden" name="{{ k }}" value="{{ v }}">
+        {% endfor %}
+        <input type="hidden" name="exclude_outliers" value="1">
+        <button type="submit" class="btn btn-warning">
+          Exclude Outliers
+        </button>
+      </form>
+      <span class="ms-3">Currently <strong>including</strong> all sessions.</span>
     {% endif %}
-    <p><strong>Total Records in Last 24 Hours:</strong> {{ record_count }}</p>
+  </div>
+
+  <!-- 5) Overview Cards -->
+  <div class="row">
+    <div class="col-md-3">
+      <div class="card text-center mb-3">
+        <div class="card-header bg-primary text-white">Total Arrivals</div>
+        <div class="card-body">
+          <h5 class="card-title">{{ total_arrivals }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center mb-3">
+        <div class="card-header bg-success text-white">Avg Wait (min)</div>
+        <div class="card-body">
+          <h5 class="card-title">{{ avg_wait }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center mb-3">
+        <div class="card-header bg-danger text-white">Max Wait (min)</div>
+        <div class="card-body">
+          <h5 class="card-title">{{ max_wait }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center mb-3">
+        <div class="card-header bg-info text-white">Min Wait (min)</div>
+        <div class="card-body">
+          <h5 class="card-title">{{ min_wait }}</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6) Predict Appointment Duration -->
+  <div class="row mt-5">
+    <div class="col-md-12">
+      <h2>Predict Appointment Duration</h2>
+      {% if predict_error_message %}
+        <div class="alert alert-danger">{{ predict_error_message }}</div>
+      {% endif %}
+      <!-- We'll preserve existing GET in the action so user keeps their date range. -->
+      <form method="POST" action="?{{ request.GET.urlencode|safe }}">
+        {% csrf_token %}
+        <input type="hidden" name="predict_form" value="1">
+
+        <div class="mb-3">
+          <label class="form-label">Date (dd/mm/yyyy)</label>
+          <input type="text" class="form-control"
+                 name="predict_date"
+                 placeholder="01/02/2025"
+                 value="{{ predict_date }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Time (HH:MM)</label>
+          <input type="text" class="form-control"
+                 name="predict_time"
+                 placeholder="09:30"
+                 value="{{ predict_time }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Predict</button>
+      </form>
+      {% if predict_predicted_minutes %}
+        <div class="mt-3">
+          <p>Predicted Appointment Duration: 
+            <strong>{{ predict_predicted_minutes }} minutes</strong>
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  
+<!-- 7) Toggle Simulated vs. Real data, with a hidden form approach -->
+<div class="row mt-5">
+  <div class="col-md-12">
+    {% if show_simulated %}
+  <form method="GET" action="" style="display:inline;">
+    {% for k,v in request.GET.items %}
+      {% if k != 'simulated' %}
+        <input type="hidden" name="{{ k }}" value="{{ v }}">
+      {% endif %}
+    {% endfor %}
+    <input type="hidden" name="simulated" value="false">
+    <button type="submit" class="btn btn-info">Show Real Data</button>
+  </form>
+{% else %}
+  <form method="GET" action="" style="display:inline;">
+    {% for k,v in request.GET.items %}
+      {% if k != 'simulated' %}
+        <input type="hidden" name="{{ k }}" value="{{ v }}">
+      {% endif %}
+    {% endfor %}
+    <input type="hidden" name="simulated" value="true">
+    <button type="submit" class="btn btn-info">Show Simulated Data</button>
+  </form>
+{% endif %}
+
+  </div>
 </div>
 
-<canvas id="queueChart" width="600" height="300"></canvas>
+
+  <!-- 8) Active Sessions (Real-time) -->
+  <div class="row mt-5">
+    <div class="col-md-12">
+      <h4>Active Sessions (Real-time)</h4>
+      <table class="table table-striped" id="activeSessionsTable">
+        <thead>
+          <tr>
+            <th>Track ID</th>
+            <th>Enter Timestamp</th>
+            <th>Elapsed (sec)</th>
+            <th>Predicted Remaining (sec)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in active_sessions %}
+            <tr>
+              <td>{{ s.track_id }}</td>
+              <td>{{ s.enter_timestamp }}</td>
+              <td>{{ s.waiting_time|floatformat:2 }}</td>
+              <td>
+                {% for info in predicted_info %}
+                  {% if info.track_id == s.track_id %}
+                    {{ info.remaining_sec }}
+                  {% endif %}
+                {% endfor %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="text-muted" id="noActiveMsg" style="display:none;">No active sessions currently.</p>
+    </div>
+  </div>
+
+
+  <!-- 9) Charts for Arrivals by Hour + Wait Time Distribution -->
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <h4>Arrivals by Hour 
+        {% if is_custom_range %}
+          ({{ start_time|date:"d/m/Y H:i" }} - {{ end_time|date:"d/m/Y H:i" }})
+        {% else %}
+          (Last 24h)
+        {% endif %}
+      </h4>
+      <canvas id="peakHoursChart" width="400" height="200"></canvas>
+    </div>
+    <div class="col-md-6">
+      <h4>Wait Time Distribution 
+        {% if is_custom_range %}
+          ({{ start_time|date:"d/m/Y H:i" }} - {{ end_time|date:"d/m/Y H:i" }}, 5-min bins)
+        {% else %}
+          (Last 24h, 5-min bins)
+        {% endif %}
+      </h4>
+      <canvas id="waitDistChart" width="400" height="200"></canvas>
+      {% if dist_counts_json == "[]" %}
+        <p class="text-muted">No wait time data in this window.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 10) Top 10 Longest Waits -->
+  <div class="row mt-5">
+    <div class="col-md-12">
+      {% if start_time and end_time and start_time|date:'U' != end_time|date:'U' %}
+        <h4>Top 10 Longest Waits ({{ start_time|date:"d/m/Y H:i" }} - {{ end_time|date:"d/m/Y H:i" }})</h4>
+      {% else %}
+        <h4>Top 10 Longest Waits (Last 24h)</h4>
+      {% endif %}
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>ID (pk)</th>
+            <th>Enter</th>
+            <th>Exit</th>
+            <th>Duration (sec)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if top_sessions %}
+            {% for s in top_sessions %}
+            <tr>
+              <!-- Use s.pk instead of s.track_id -->
+              <td>{{ s.pk }}</td>
+              <td>{{ s.enter_timestamp }}</td>
+              <td>{{ s.exit_timestamp }}</td>
+              <td>{{ s.duration_seconds }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="4">No completed sessions found.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 11) Day-of-Week & Time-of-Day Arrivals -->
+  <div class="row mt-5">
+    <div class="col-md-6">
+      <h4>Arrivals by Day-of-Week 
+        {% if is_custom_range %}
+          (Custom Range)
+        {% else %}
+          (Last 7d)
+        {% endif %}
+      </h4>
+      <canvas id="dowChart" width="400" height="200"></canvas>
+      {% if dow_counts_json == "[]" %}
+        <p class="text-muted">No data for day-of-week arrivals.</p>
+      {% endif %}
+    </div>
+    <div class="col-md-6">
+      <h4>Arrivals by Hour-of-Day 
+        {% if is_custom_range %}
+          (Custom Range)
+        {% else %}
+          (Last 7d)
+        {% endif %}
+      </h4>
+      <canvas id="todChart" width="400" height="200"></canvas>
+      {% if tod_counts_json == "[]" %}
+        <p class="text-muted">No data for time-of-day arrivals.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 12) Avg Wait by Day-of-Week & Hour-of-Day -->
+  <div class="row mt-5">
+    <div class="col-md-6">
+      <h4>Avg Wait Time by Day-of-Week 
+        {% if is_custom_range %}
+          (Custom Range)
+        {% else %}
+          (Last 7d)
+        {% endif %}
+      </h4>
+      <canvas id="dowWaitChart" width="400" height="200"></canvas>
+      {% if dow_wait_values_json == "[]" %}
+        <p class="text-muted">No wait data for day-of-week distribution.</p>
+      {% endif %}
+    </div>
+    <div class="col-md-6">
+      <h4>Avg Wait Time by Hour-of-Day 
+        {% if is_custom_range %}
+          (Custom Range)
+        {% else %}
+          (Last 7d)
+        {% endif %}
+      </h4>
+      <canvas id="hodWaitChart" width="400" height="200"></canvas>
+      {% if hod_wait_values_json == "[]" %}
+        <p class="text-muted">No wait data for hour-of-day distribution.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+  <!-- 13) Export CSV Button -->
+  <div class="row mt-4">
+    <div class="col-md-12">
+      <!-- We'll preserve existing GET by placing them in a small form or do it inline. Let's do a small form: -->
+      <form method="GET" action="{% url 'dashboard_export_csv' %}" style="display:inline;">
+        {% for k, v in request.GET.items %}
+          <input type="hidden" name="{{ k }}" value="{{ v }}">
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">Export CSV</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js logic -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    var ctx = document.getElementById('queueChart').getContext('2d');
-    var queueChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ["00:00", "06:00", "12:00", "18:00", "24:00"],
-            datasets: [{
-                label: 'Average Detection Count',
-                data: [{{ average_count }}, {{ average_count }}, {{ average_count }}, {{ average_count }}, {{ average_count }}],
+  // Real-time sessions poll
+  function refreshActiveSessions() {
+    fetch("{% url 'active_sessions_api' %}", {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    })
+    .then(resp => resp.json())
+    .then(data => {
+      const tableBody = document.querySelector("#activeSessionsTable tbody");
+      const noActiveMsg = document.getElementById("noActiveMsg");
+      tableBody.innerHTML = "";
+      const sessions = data.active_sessions;
+      if (sessions.length === 0) {
+        noActiveMsg.style.display = 'block';
+        document.getElementById('activeSessionsTable').style.display = 'none';
+        return;
+      } else {
+        noActiveMsg.style.display = 'none';
+        document.getElementById('activeSessionsTable').style.display = 'table';
+      }
+      sessions.forEach(s => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${s.track_id}</td>
+          <td>${s.enter_timestamp}</td>
+          <td>${s.elapsed_seconds}</td>
+          <td>${s.predicted_remain}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    })
+    .catch(err => console.error("Error fetching active sessions:", err));
+  }
+  setInterval(refreshActiveSessions, 1000); // e.g., poll every 10s
 
-    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 1,
-                fill: true
-          }]
+/* Now create Chart.js charts from your JSON context variables. 
+   For example:
+*/
+// 1) Arrivals by Hour
+const hourLabels = JSON.parse('{{ hour_labels_json|safe }}');
+  const hourCounts = JSON.parse('{{ hour_counts_json|safe }}');
+  if(hourLabels.length) {
+    const ctxHour = document.getElementById('peakHoursChart').getContext('2d');
+    new Chart(ctxHour, {
+      type: 'bar',
+      data: {
+        labels: hourLabels,
+        datasets: [{
+          label: 'Arrivals by Hour',
+          data: hourCounts,
+          borderWidth: 1
+        }]
       },
-    options: {
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
+      options: { scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+// 2) Wait Time Distribution
+const distLabels = JSON.parse('{{ dist_labels_json|safe }}');
+const distCounts = JSON.parse('{{ dist_counts_json|safe }}');
+if(distLabels.length) {
+  const ctxDist = document.getElementById('waitDistChart').getContext('2d');
+  new Chart(ctxDist, {
+    type: 'bar',
+    data: {
+      labels: distLabels,
+      datasets: [{
+        label: 'Number of Sessions',
+        data: distCounts,
+        borderWidth: 1
+      }]
     }
   });
+}
+
+// 3) Arrivals by Day-of-Week
+const dowLabels = JSON.parse('{{ dow_labels_json|safe }}');
+const dowCounts = JSON.parse('{{ dow_counts_json|safe }}');
+if(dowLabels.length) {
+  const ctxDOW = document.getElementById('dowChart').getContext('2d');
+  new Chart(ctxDOW, {
+    type: 'bar',
+    data: {
+      labels: dowLabels,
+      datasets: [{
+        label: 'Arrivals by DOW',
+        data: dowCounts,
+        borderWidth: 1
+      }]
+    }
+  });
+}
+
+// 4) Arrivals by Hour-of-Day
+const todLabels = JSON.parse('{{ tod_labels_json|safe }}');
+const todCounts = JSON.parse('{{ tod_counts_json|safe }}');
+if(todLabels.length) {
+  const ctxTOD = document.getElementById('todChart').getContext('2d');
+  new Chart(ctxTOD, {
+    type: 'line',
+    data: {
+      labels: todLabels,
+      datasets: [{
+        label: 'Arrivals by Hour-of-Day',
+        data: todCounts,
+        borderWidth: 2,
+        fill: false
+      }]
+    }
+  });
+}
+
+// 5) Avg Wait by Day-of-Week
+const dowWaitLabels = JSON.parse('{{ dow_wait_labels_json|safe }}');
+const dowWaitValues = JSON.parse('{{ dow_wait_values_json|safe }}');
+if(dowWaitLabels.length) {
+  const ctxDOWWait = document.getElementById('dowWaitChart').getContext('2d');
+  new Chart(ctxDOWWait, {
+    type: 'bar',
+    data: {
+      labels: dowWaitLabels,
+      datasets: [{
+        label: 'Avg Wait (min)',
+        data: dowWaitValues,
+        borderWidth: 1
+      }]
+    }
+  });
+}
+
+// 6) Avg Wait by Hour-of-Day
+const hodWaitLabels = JSON.parse('{{ hod_wait_labels_json|safe }}');
+const hodWaitValues = JSON.parse('{{ hod_wait_values_json|safe }}');
+if(hodWaitLabels.length) {
+  const ctxHODWait = document.getElementById('hodWaitChart').getContext('2d');
+  new Chart(ctxHODWait, {
+    type: 'bar',
+    data: {
+      labels: hodWaitLabels,
+      datasets: [{
+        label: 'Avg Wait (min)',
+        data: hodWaitValues,
+        borderWidth: 1
+      }]
+    }
+  });
+}
+
+
+  // Real-Time Active Sessions
+  function refreshActiveSessions() {
+    fetch("{% url 'active_sessions_api' %}", {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    })
+    .then(resp => resp.json())
+    .then(data => {
+      const tableBody = document.querySelector("#activeSessionsTable tbody");
+      const noActiveMsg = document.getElementById("noActiveMsg");
+      tableBody.innerHTML = "";
+      const sessions = data.active_sessions;
+      if (sessions.length === 0) {
+        noActiveMsg.style.display = 'block';
+        document.getElementById('activeSessionsTable').style.display = 'none';
+        return;
+      } else {
+        noActiveMsg.style.display = 'none';
+        document.getElementById('activeSessionsTable').style.display = 'table';
+      }
+      sessions.forEach(s => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${s.track_id}</td>
+          <td>${s.enter_timestamp}</td>
+          <td>${s.elapsed_seconds}</td>
+          <td>${s.predicted_remain}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    })
+    .catch(err => console.error("Error fetching active sessions:", err));
+  }
+  setInterval(refreshActiveSessions, 1000);
 </script>
 {% endblock %}
