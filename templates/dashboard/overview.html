@@ -1,0 +1,16 @@
+<!-- templates/dashboard/overview.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<h2>Overview Dashboard (Last 24 Hours)</h2>
+<p><strong>Total Arrivals:</strong> {{ total_arrivals }}</p>
+<p><strong>Average Wait Time:</strong> {{ avg_wait }} minutes</p>
+<p><strong>Max Wait Time:</strong> {{ max_wait }} minutes</p>
+<p><strong>Min Wait Time:</strong> {{ min_wait }} minutes</p>
+
+<p>Data range: {{ start_time }} to {{ end_time }}</p>
+
+<br>
+<a href="{% url 'dashboard_export_csv' %}" class="btn btn-primary">Export Dashboard CSV</a>
+{% endblock %}

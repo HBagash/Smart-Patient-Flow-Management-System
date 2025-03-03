@@ -1,0 +1,34 @@
+<!-- templates/predict_appointment.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Predict Appointment Duration</h2>
+
+  {% if error_message %}
+    <div class="alert alert-danger">{{ error_message }}</div>
+  {% endif %}
+
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="dateInput" class="form-label">Date (dd/mm/yyyy or select date)</label>
+      <!-- The value attribute uses the passed in 'date' variable -->
+      <input type="date" class="form-control" id="dateInput" name="date" placeholder="dd/mm/yyyy" value="{{ date }}">
+    </div>
+    <div class="mb-3">
+      <label for="timeInput" class="form-label">Time (HH:MM)</label>
+      <!-- The value attribute uses the passed in 'time' variable -->
+      <input type="time" class="form-control" id="timeInput" name="time" placeholder="09:30" value="{{ time }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Predict</button>
+  </form>
+
+  {% if predicted_minutes is not None %}
+    <div class="mt-3">
+      <p>Predicted Duration: <strong>{{ predicted_minutes }} minutes</strong></p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

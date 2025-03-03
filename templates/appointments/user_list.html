@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2>Available Appointment Slots</h2>
+  {% if appointments %}
+    <div class="list-group">
+      {% for apt in appointments %}
+        <a href="{% url 'user_appointment_book' pk=apt.pk %}" class="list-group-item list-group-item-action">
+          <strong>Slot #{{ apt.pk }}</strong>:
+          {{ apt.scheduled_start|date:"d/m/Y H:i" }} ({{ apt.duration_minutes }} min)
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No available appointments found.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2>Book Appointment Slot #{{ appointment.pk }}</h2>
+  <p>Scheduled: {{ appointment.scheduled_start|date:"d/m/Y H:i" }} ({{ appointment.duration_minutes }} min)</p>
+  <form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Confirm Booking</button>
+  </form>
+</div>
+{% endblock %}
