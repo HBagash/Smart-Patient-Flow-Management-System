@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">Generate Suggested Appointments</h2>
+  <p>
+    Please provide the time range for which you want to automatically generate appointment slots and specify the intended duration (in minutes) for each slot.
+  </p>
+  <form method="post" action="">
+    {% csrf_token %}
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <label for="start_time" class="form-label">Start Date &amp; Time</label>
+        <input type="datetime-local" class="form-control" id="start_time" name="start_time" required>
+      </div>
+      <div class="col-md-4">
+        <label for="end_time" class="form-label">End Date &amp; Time</label>
+        <input type="datetime-local" class="form-control" id="end_time" name="end_time" required>
+      </div>
+      <div class="col-md-4">
+        <label for="duration_minutes" class="form-label">Intended Duration (minutes)</label>
+        <input type="number" class="form-control" id="duration_minutes" name="duration_minutes" min="1" required>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Generate Appointments</button>
+  </form>
+</div>
+{% endblock %}

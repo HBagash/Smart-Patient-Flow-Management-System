@@ -1,0 +1,36 @@
+<!-- templates/dashboard/wait_distribution.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<h2>Waiting Time Distribution (Last {{ hours }} Hours)</h2>
+<canvas id="waitDistChart" width="600" height="300"></canvas>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+var distLabels = JSON.parse('{{ labels|safe }}');  // e.g. ["0-5 min","5-10 min", ...]
+var distCounts = JSON.parse('{{ counts|safe }}');  // e.g. [12, 30, ...]
+
+var ctxDist = document.getElementById('waitDistChart').getContext('2d');
+var distChart = new Chart(ctxDist, {
+    type: 'bar',
+    data: {
+        labels: distLabels,
+        datasets: [{
+            label: 'Number of Sessions',
+            data: distCounts,
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            y: { beginAtZero: true }
+        }
+    }
+});
+</script>
+
+<br>
+<a href="{% url 'dashboard_export_csv' %}" class="btn btn-primary">Export Dashboard CSV</a>
+{% endblock %}

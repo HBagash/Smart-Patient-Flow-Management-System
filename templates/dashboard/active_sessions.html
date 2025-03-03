@@ -1,0 +1,14 @@
+<!-- templates/dashboard/active_sessions.html -->
+{% extends 'base.html' %}
+{% block content %}
+<h2>Active Sessions</h2>
+{% if active_sessions %}
+  <ul>
+    {% for session in active_sessions %}
+      <li>ID: {{ session.track_id }} - Entered: {{ session.enter_timestamp }} ({{ session.waiting_time|floatformat:2 }} seconds so far)</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No active sessions currently.</p>
+{% endif %}
+{% endblock %}

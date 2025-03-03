@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2>Staff Appointment List</h2>
+  <p>
+    <a class="btn btn-primary" href="{% url 'staff_appointment_create' %}">Create New Slot</a>
+    <a class="btn btn-success" href="{% url 'staff_generate_appointments' %}">Generate Suggested Appointments</a>
+  </p>
+  <form method="post" action="{% url 'staff_bulk_delete' %}">
+    {% csrf_token %}
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="select_all"></th>
+          <th>ID</th>
+          <th>Scheduled Start</th>
+          <th>Duration (min)</th>
+          <th>Status</th>
+          <th>Patient</th>
+          <th>Predicted Delay</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for apt in appointments %}
+        <tr>
+          <td>
+            <input type="checkbox" name="selected_appointments" value="{{ apt.pk }}">
+          </td>
+          <td>{{ apt.pk }}</td>
+          <td>{{ apt.scheduled_start|date:"d/m/Y H:i" }}</td>
+          <td>{{ apt.duration_minutes }}</td>
+          <td>{{ apt.status }}</td>
+          <td>{{ apt.patient_name }}<br>{{ apt.patient_email }}</td>
+          <td>
+            {% if apt.predicted_overrun != None %}
+              {{ apt.predicted_overrun }} sec
+            {% else %}
+              {% if apt.predicted_delay != None %}
+                {{ apt.predicted_delay }} sec
+              {% else %}
+                N/A
+              {% endif %}
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'staff_appointment_edit' pk=apt.pk %}" class="btn btn-sm btn-warning">Edit</a>
+            <a href="{% url 'staff_appointment_delete' pk=apt.pk %}" class="btn btn-sm btn-danger">Delete</a>
+            <a href="{% url 'staff_mark_completed' pk=apt.pk %}" class="btn btn-sm btn-info">Mark Completed</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit" class="btn btn-danger">Bulk Delete Selected</button>
+  </form>
+</div>
+<script>
+document.getElementById('select_all').addEventListener('change', function(e) {
+  const checkboxes = document.querySelectorAll('input[name="selected_appointments"]');
+  checkboxes.forEach(cb => cb.checked = e.target.checked);
+});
+</script>
+{% endblock %}

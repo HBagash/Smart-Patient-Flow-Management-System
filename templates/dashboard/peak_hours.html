@@ -1,0 +1,33 @@
+<!-- templates/dashboard/peak_hours.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<h2>Peak Hours (Last {{ hours }} Hours)</h2>
+<canvas id="peakHoursChart" width="600" height="300"></canvas>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+var ctx = document.getElementById('peakHoursChart').getContext('2d');
+var peakChart = new Chart(ctx, {
+    type: 'bar', // or 'line'
+    data: {
+        labels: JSON.parse('{{ labels|safe }}'),
+        datasets: [{
+            label: 'Arrivals by Hour',
+            data: JSON.parse('{{ counts|safe }}'),
+            borderWidth: 1
+        }]
+    },
+    options: {
+        scales: {
+            y: { beginAtZero: true }
+        }
+    }
+});
+</script>
+
+<br>
+<a href="{% url 'dashboard_export_csv' %}" class="btn btn-primary">Export Dashboard CSV</a>
+{% endblock %}

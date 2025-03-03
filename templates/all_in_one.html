@@ -1,0 +1,397 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1>All-In-One Dashboard (Last 24 Hours)</h1>
+  
+  <!-- Display the date range for which the data is calculated -->
+  <div class="mb-3">
+    <p>
+      Data from: <strong>{{ start_time|date:"d/m/Y H:i" }}</strong> to 
+      <strong>{{ end_time|date:"d/m/Y H:i" }}</strong>
+    </p>
+  </div>
+
+  <!-- Outlier Toggle -->
+  <div class="mb-3">
+    {% if exclude_outliers %}
+      <a class="btn btn-secondary" href="?">Show All (Include Outliers)</a>
+      <span class="ms-3">Currently <strong>excluding</strong> outliers (mean+3*std).</span>
+    {% else %}
+      <a class="btn btn-warning" href="?exclude_outliers=1">Exclude Outliers</a>
+      <span class="ms-3">Currently <strong>including</strong> all sessions.</span>
+    {% endif %}
+  </div>
+
+  <!-- Overview Cards -->
+  <div class="row">
+    <div class="col-md-3">
+      <div class="card text-center mb-3">
+        <div class="card-header bg-primary text-white">Total Arrivals</div>
+        <div class="card-body">
+          <h5 class="card-title">{{ total_arrivals }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center mb-3">
+        <div class="card-header bg-success text-white">Avg Wait (min)</div>
+        <div class="card-body">
+          <h5 class="card-title">{{ avg_wait }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center mb-3">
+        <div class="card-header bg-danger text-white">Max Wait (min)</div>
+        <div class="card-body">
+          <h5 class="card-title">{{ max_wait }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center mb-3">
+        <div class="card-header bg-info text-white">Min Wait (min)</div>
+        <div class="card-body">
+          <h5 class="card-title">{{ min_wait }}</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Predict Appointment Duration Section -->
+  <div class="row mt-5">
+    <div class="col-md-12">
+      <h2>Predict Appointment Duration</h2>
+      {% if predict_error_message %}
+        <div class="alert alert-danger">{{ predict_error_message }}</div>
+      {% endif %}
+      <form method="POST" action="">
+        {% csrf_token %}
+        <!-- Hidden field to indicate this is the predict form -->
+        <input type="hidden" name="predict_form" value="1">
+        <div class="mb-3">
+          <label for="predictDate" class="form-label">Date (dd/mm/yyyy or select date)</label>
+          <input type="date" class="form-control" id="predictDate" name="predict_date" placeholder="dd/mm/yyyy" value="{{ predict_date }}">
+        </div>
+        <div class="mb-3">
+          <label for="predictTime" class="form-label">Time (HH:MM)</label>
+          <input type="time" class="form-control" id="predictTime" name="predict_time" placeholder="09:30" value="{{ predict_time }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Predict</button>
+      </form>
+      {% if predict_predicted_minutes %}
+        <div class="mt-3">
+          <p>Predicted Appointment Duration: <strong>{{ predict_predicted_minutes }} minutes</strong></p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Toggle Button for Simulated vs. Real Data -->
+  <div class="row mt-5">
+    <div class="col-md-12">
+      {% if show_simulated %}
+        <a class="btn btn-info" href="?simulated=false{% if exclude_outliers %}&exclude_outliers=1{% endif %}">Show Real Data</a>
+      {% else %}
+        <a class="btn btn-info" href="?simulated=true{% if exclude_outliers %}&exclude_outliers=1{% endif %}">Show Simulated Data</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Active Sessions (Real-time) -->
+  <div class="row mt-5">
+    <div class="col-md-12">
+      <h4>Active Sessions (Real-time)</h4>
+      <table class="table table-striped" id="activeSessionsTable">
+        <thead>
+          <tr>
+            <th>Track ID</th>
+            <th>Enter Timestamp</th>
+            <th>Elapsed (sec)</th>
+            <th>Predicted Remaining (sec)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in active_sessions %}
+            <tr>
+              <td>{{ s.track_id }}</td>
+              <td>{{ s.enter_timestamp }}</td>
+              <td>{{ s.waiting_time|floatformat:2 }}</td>
+              <td>
+                {% for info in predicted_info %}
+                  {% if info.track_id == s.track_id %}
+                    {{ info.remaining_sec }}
+                  {% endif %}
+                {% endfor %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="text-muted" id="noActiveMsg" style="display:none;">No active sessions currently.</p>
+    </div>
+  </div>
+
+  <!-- Peak Hours & Wait Distribution -->
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <h4>Arrivals by Hour (Last 24h)</h4>
+      <canvas id="peakHoursChart" width="400" height="200"></canvas>
+      {% if hour_counts_json == "[]" %}
+        <p class="text-muted">No arrival data for this window.</p>
+      {% endif %}
+    </div>
+    <div class="col-md-6">
+      <h4>Wait Time Distribution (Last 24h, 5-min bins)</h4>
+      <canvas id="waitDistChart" width="400" height="200"></canvas>
+      {% if dist_counts_json == "[]" %}
+        <p class="text-muted">No wait time data for this window.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Top 10 Longest Waits -->
+  <div class="row mt-5">
+    <div class="col-md-12">
+      <h4>Top 10 Longest Waits (Last 24h)</h4>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Track ID</th>
+            <th>Enter</th>
+            <th>Exit</th>
+            <th>Duration (sec)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if top_sessions %}
+            {% for s in top_sessions %}
+              <tr>
+                <td>{{ s.track_id }}</td>
+                <td>{{ s.enter_timestamp }}</td>
+                <td>{{ s.exit_timestamp }}</td>
+                <td>{{ s.duration_seconds }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="4">No completed sessions found.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Day-of-Week & Time-of-Day Arrivals -->
+  <div class="row mt-5">
+    <div class="col-md-6">
+      <h4>Arrivals by Day-of-Week (Last 7d)</h4>
+      <canvas id="dowChart" width="400" height="200"></canvas>
+      {% if dow_counts_json == "[]" %}
+        <p class="text-muted">No data for day-of-week arrivals.</p>
+      {% endif %}
+    </div>
+    <div class="col-md-6">
+      <h4>Arrivals by Hour-of-Day (Last 7d)</h4>
+      <canvas id="todChart" width="400" height="200"></canvas>
+      {% if tod_counts_json == "[]" %}
+        <p class="text-muted">No data for time-of-day arrivals.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Wait Dist by Day-of-Week & Hour-of-Day (Avg Wait) -->
+  <div class="row mt-5">
+    <div class="col-md-6">
+      <h4>Avg Wait Time by Day-of-Week (Last 7d)</h4>
+      <canvas id="dowWaitChart" width="400" height="200"></canvas>
+      {% if dow_wait_values_json == "[]" %}
+        <p class="text-muted">No wait data for day-of-week distribution.</p>
+      {% endif %}
+    </div>
+    <div class="col-md-6">
+      <h4>Avg Wait Time by Hour-of-Day (Last 7d)</h4>
+      <canvas id="hodWaitChart" width="400" height="200"></canvas>
+      {% if hod_wait_values_json == "[]" %}
+        <p class="text-muted">No wait data for hour-of-day distribution.</p>
+      {% endif %}
+    </div>
+  </div>
+  
+  <!-- Export CSV Button -->
+  <div class="row mt-4">
+    <div class="col-md-12">
+      {% if exclude_outliers %}
+        <a class="btn btn-primary" href="{% url 'dashboard_export_csv' %}?exclude_outliers=1">Export CSV (No Outliers)</a>
+      {% else %}
+        <a class="btn btn-primary" href="{% url 'dashboard_export_csv' %}">Export CSV</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Load Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // 1) Arrivals by Hour
+  var hourLabels = JSON.parse('{{ hour_labels_json|safe }}');
+  var hourCounts = JSON.parse('{{ hour_counts_json|safe }}');
+  if (hourLabels.length > 0) {
+    var ctxHour = document.getElementById('peakHoursChart').getContext('2d');
+    new Chart(ctxHour, {
+      type: 'bar',
+      data: {
+        labels: hourLabels,
+        datasets: [{
+          label: 'Arrivals',
+          data: hourCounts,
+          borderWidth: 1
+        }]
+      },
+      options: { scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  // 2) Wait Time Distribution
+  var distLabels = JSON.parse('{{ dist_labels_json|safe }}');
+  var distCounts = JSON.parse('{{ dist_counts_json|safe }}');
+  if (distLabels.length > 0) {
+    var ctxDist = document.getElementById('waitDistChart').getContext('2d');
+    new Chart(ctxDist, {
+      type: 'bar',
+      data: {
+        labels: distLabels,
+        datasets: [{
+          label: 'Number of Sessions',
+          data: distCounts,
+          borderWidth: 1
+        }]
+      },
+      options: { scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  // 3) Day-of-Week Arrivals
+  var dowLabels = JSON.parse('{{ dow_labels_json|safe }}');
+  var dowCounts = JSON.parse('{{ dow_counts_json|safe }}');
+  if (dowLabels.length > 0) {
+    var ctxDOW = document.getElementById('dowChart').getContext('2d');
+    new Chart(ctxDOW, {
+      type: 'bar',
+      data: {
+        labels: dowLabels,
+        datasets: [{
+          label: 'Arrivals by Day',
+          data: dowCounts,
+          borderWidth: 1
+        }]
+      },
+      options: { scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  // 4) Time-of-Day Arrivals
+  var todLabels = JSON.parse('{{ tod_labels_json|safe }}');
+  var todCounts = JSON.parse('{{ tod_counts_json|safe }}');
+  if (todLabels.length > 0) {
+    var ctxTOD = document.getElementById('todChart').getContext('2d');
+    new Chart(ctxTOD, {
+      type: 'line',
+      data: {
+        labels: todLabels,
+        datasets: [{
+          label: 'Arrivals by Hour (0-23)',
+          data: todCounts,
+          borderWidth: 2,
+          fill: false
+        }]
+      },
+      options: {
+        scales: {
+          x: { title: { display: true, text: 'Hour of Day' } },
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // 5) Wait Distribution by Day-of-Week (Avg Wait)
+  var dowWaitLabels = JSON.parse('{{ dow_wait_labels_json|safe }}');
+  var dowWaitValues = JSON.parse('{{ dow_wait_values_json|safe }}');
+  if (dowWaitLabels.length > 0) {
+    var ctxDOWWait = document.getElementById('dowWaitChart').getContext('2d');
+    new Chart(ctxDOWWait, {
+      type: 'bar',
+      data: {
+        labels: dowWaitLabels,
+        datasets: [{
+          label: 'Avg Wait (min)',
+          data: dowWaitValues,
+          borderWidth: 1
+        }]
+      },
+      options: { scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  // 6) Wait Distribution by Hour-of-Day (Avg Wait)
+  var hodWaitLabels = JSON.parse('{{ hod_wait_labels_json|safe }}');
+  var hodWaitValues = JSON.parse('{{ hod_wait_values_json|safe }}');
+  if (hodWaitLabels.length > 0) {
+    var ctxHODWait = document.getElementById('hodWaitChart').getContext('2d');
+    new Chart(ctxHODWait, {
+      type: 'bar',
+      data: {
+        labels: hodWaitLabels,
+        datasets: [{
+          label: 'Avg Wait (min)',
+          data: hodWaitValues,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          x: { title: { display: true, text: 'Hour of Day (0-23)' } },
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // Real-Time Active Sessions
+  function refreshActiveSessions() {
+    fetch("{% url 'active_sessions_api' %}", {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    })
+    .then(resp => resp.json())
+    .then(data => {
+      const tableBody = document.querySelector("#activeSessionsTable tbody");
+      const noActiveMsg = document.getElementById("noActiveMsg");
+      tableBody.innerHTML = "";
+      const sessions = data.active_sessions;
+      if (sessions.length === 0) {
+        noActiveMsg.style.display = 'block';
+        document.getElementById('activeSessionsTable').style.display = 'none';
+        return;
+      } else {
+        noActiveMsg.style.display = 'none';
+        document.getElementById('activeSessionsTable').style.display = 'table';
+      }
+      sessions.forEach(s => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${s.track_id}</td>
+          <td>${s.enter_timestamp}</td>
+          <td>${s.elapsed_seconds}</td>
+          <td>${s.predicted_remain}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    })
+    .catch(err => console.error("Error fetching active sessions:", err));
+  }
+  setInterval(refreshActiveSessions, 1000);
+</script>
+{% endblock %}
