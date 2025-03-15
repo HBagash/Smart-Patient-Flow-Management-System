@@ -10,8 +10,8 @@ venv\Scripts\Activate
 
 python -m pip install --upgrade pip
 
-You may need to manually install PyTorch if you require CUDA:
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+You may need to manually install PyTorch if you require CUDA (For 5070 TI):
+pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
 
 Now you can install all the other dependencies:
 pip install -r requirements.txt
