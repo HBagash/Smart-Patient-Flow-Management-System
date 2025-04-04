@@ -3,14 +3,9 @@ from django.http import StreamingHttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .detection_module import capture_screen, perform_detection_on_frame, generate_video_stream
 from . import detection_module
-from .models import DetectionRecord
+from .models import PersonSession
 import json
 import mss
-
-def latest_detection(request):
-    record = DetectionRecord.objects.order_by('-timestamp').first()
-    context = {'record': record}
-    return render(request, 'detection/latest.html', context)
 
 def video_feed(request):
     return StreamingHttpResponse(
@@ -23,20 +18,14 @@ def test_detection(request):
         monitor = sct.monitors[1]
         frame = capture_screen(sct, monitor)
         processed_frame, person_count = perform_detection_on_frame(frame)
-    context = {'count': person_count}
-    return render(request, 'detection/test.html', context)
+    return render(request, 'detection/test.html', {'count': person_count})
 
 def video_view(request):
     return render(request, 'detection/video.html')
 
 @csrf_exempt
 def update_detection_zones_multiple(request):
-    """
-    Expects POST with:
-      rects: JSON array of [ [x1,y1,x2,y2], ... ]
-      origWidth, origHeight: original dimensions of the subregion.
-    Stores them in detection_module.DETECTION_ZONES.
-    """
+    
     if request.method == "POST":
         try:
             rects_str = request.POST.get("rects")

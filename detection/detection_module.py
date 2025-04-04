@@ -8,15 +8,14 @@ from datetime import datetime
 from django.utils import timezone
 from ultralytics import YOLO
 
+DETECTION_ZONES = None
 REFRESH_INTERVAL = 0
 CONFIDENCE_THRESHOLD = 0.35
 TRACKER_CONFIG = 'bytetrack.yaml'
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "yolov8x.pt")
-
 model = YOLO(MODEL_PATH)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
-
 _contiguous_id_map = {}
 _next_contiguous_id = 1
 
@@ -57,7 +56,6 @@ def compute_iou(boxA, boxB):
 def detect_and_track(frame, iou_thresh=0.3):
     total_start = time.time()
     raw_frame = frame.copy()
-
     raw_results = model(raw_frame, conf=CONFIDENCE_THRESHOLD, iou=0.5)
     raw_boxes = []
     for box in raw_results[0].boxes:
@@ -65,12 +63,10 @@ def detect_and_track(frame, iou_thresh=0.3):
             coords = list(map(int, box.xyxy[0].tolist()))
             conf = float(box.conf[0].item())
             raw_boxes.append({'bbox': coords, 'confidence': conf})
-
     annotated = raw_frame.copy()
     for det in raw_boxes:
         x1, y1, x2, y2 = det['bbox']
         cv2.rectangle(annotated, (x1, y1), (x2, y2), (255, 0, 0), 2)
-
     track_results = model.track(
         source=raw_frame,
         conf=CONFIDENCE_THRESHOLD,
@@ -80,9 +76,7 @@ def detect_and_track(frame, iou_thresh=0.3):
         show=False
     )
     if not track_results:
-        print("[WARNING] No tracking results.")
         return annotated, []
-    
     final_result = track_results[-1]
     tracker_boxes = []
     for box in getattr(final_result, 'boxes', []):
@@ -93,7 +87,6 @@ def detect_and_track(frame, iou_thresh=0.3):
         coords = list(map(int, box.xyxy[0].tolist()))
         conf = float(box.conf[0].item())
         tracker_boxes.append({'raw_id': str(box.id), 'bbox': coords, 'confidence': conf})
-
     track_list = []
     for det in raw_boxes:
         best_match = None
@@ -106,26 +99,21 @@ def detect_and_track(frame, iou_thresh=0.3):
         if best_match and best_iou > iou_thresh:
             norm_id = get_contiguous_id(best_match['raw_id'])
         else:
-
             new_raw = f"new_{len(_contiguous_id_map)+1}"
             norm_id = get_contiguous_id(new_raw)
         det['track_id'] = norm_id
         track_list.append(det)
-
         x1, y1, x2, y2 = det['bbox']
         cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
         cv2.putText(annotated, f"ID:{norm_id} {det['confidence']:.2f}", (x1, max(y1-10,10)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
-
     total_end = time.time()
-    print(f"[TIMING] Total: {(total_end - total_start)*1000:.2f}ms")
     return annotated, track_list
 
 def detection_loop():
     from .models import PersonSession
     with mss.mss() as sct:
         monitor = sct.monitors[1]
-        print(f"[INFO] Capturing from monitor: {monitor}")
         while True:
             frame = capture_screen(sct, monitor, target_width=640)
             annotated_frame, track_list = detect_and_track(frame)
@@ -141,21 +129,17 @@ def detection_loop():
                         enter_timestamp=timezone.now(),
                         appearance_feature=feature
                     )
-                    print(f"[INFO] New PersonSession for ID: {norm_id}")
-                    
-            for norm_id in set().union(*[ {s.track_id} for s in PersonSession.objects.filter(exit_timestamp__isnull=True) ]) - current_ids:
+            for norm_id in set().union(*[{s.track_id} for s in PersonSession.objects.filter(exit_timestamp__isnull=True)]) - current_ids:
                 session = PersonSession.objects.filter(track_id=norm_id, exit_timestamp__isnull=True).first()
                 if session:
                     session.exit_timestamp = timezone.now()
                     session.duration_seconds = (session.exit_timestamp - session.enter_timestamp).total_seconds()
                     session.save()
-                    print(f"[INFO] ID {norm_id} left. Duration: {session.duration_seconds:.2f} sec")
             time.sleep(REFRESH_INTERVAL)
 
 def generate_video_stream():
     with mss.mss() as sct:
         monitor = sct.monitors[1]
-        print(f"[INFO] Streaming from monitor: {monitor}")
         while True:
             frame = capture_screen(sct, monitor, target_width=640)
             annotated_frame, _ = detect_and_track(frame)
