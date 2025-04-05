@@ -1,37 +1,46 @@
-def kalman_filter_update(measured_value, prev_estimate, prev_covariance, process_var=100.0, measurement_var=200.0):
+from django.utils import timezone
+from django.db.models.functions import ExtractWeekDay, ExtractHour
+from django.db.models import Count
+from detection.models import PersonSession
+from .utils import _exclude_outliers_qs
+
+def kalman_filter_update(measured_value, prev_estimate, prev_covariance,
+                         process_var=100.0, measurement_var=200.0):
     predicted_est = prev_estimate
     predicted_cov = prev_covariance + process_var
-    
     K = predicted_cov / (predicted_cov + measurement_var)
     new_est = predicted_est + K*(measured_value - predicted_est)
     new_cov = (1 - K)*predicted_cov
     return new_est, new_cov
 
-def predict_appointment_kalman(appt_datetime, weeks_lookback=8):
-    from django.utils import timezone
-    from django.db.models.functions import ExtractWeekDay, ExtractHour
-    from django.db.models import Count
-    from detection.models import PersonSession
-    
+def predict_appointment_kalman(appt_datetime, weeks_lookback=8, exclude_outliers=True):
     now = timezone.now()
     start_lookback = now - timezone.timedelta(weeks=weeks_lookback)
 
     d_of_w = appt_datetime.weekday() + 1
     hr = appt_datetime.hour
 
-    qs = (PersonSession.objects
-          .filter(enter_timestamp__gte=start_lookback,
-                  enter_timestamp__lt=now,
-                  exit_timestamp__isnull=False)
-          .annotate(dw=ExtractWeekDay('enter_timestamp'),
-                    hh=ExtractHour('enter_timestamp'))
-          .filter(dw=d_of_w, hh=hr)
-          .order_by('enter_timestamp'))
-    
+    qs = PersonSession.objects.filter(
+        enter_timestamp__gte=start_lookback,
+        enter_timestamp__lt=now,
+        exit_timestamp__isnull=False
+    ).annotate(
+        dw=ExtractWeekDay('enter_timestamp'),
+        hh=ExtractHour('enter_timestamp')
+    ).filter(
+        dw=d_of_w,
+        hh=hr
+    )
+
+    # Exclude outliers if requested
+    if exclude_outliers:
+        qs = qs.filter(duration_seconds__gt=1)
+        qs = _exclude_outliers_qs(qs, 'duration_seconds')
+
     if not qs.exists():
-        return 600.0
-    
-    x = 600.0
+        return 600.0  # default fallback
+
+    x = 600.0  # initial guess (seconds)
     P = 500.0
     Q = 100.0
     R = 200.0

@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Notification Request Received</h2>
+  <p>Email: <strong>{{ instance.email }}</strong></p>
+  <p>Date: <strong>{{ instance.date }}</strong></p>
+  <p>Time: <strong>{{ instance.time_block|time:"H:i" }}</strong></p>
+  <hr>
+  <h4>Predicted Wait: {{ display_wait }}</h4>
+  <p>
+    <strong>Status:</strong>
+    <span style="color: {{ status_color }}; font-weight: bold;">
+      {{ status_label }}
+    </span>
+  </p>
+  <p>We've sent a confirmation to your email with these details.</p>
+</div>
+{% endblock %}
