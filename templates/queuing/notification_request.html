@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h1>Request a Notification</h1>
+  <form method="POST" action="">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="id_email" class="form-label">Email</label>
+      {{ form.email }}
+    </div>
+    <div class="mb-3">
+      <label for="id_date" class="form-label">Date</label>
+      {{ form.date }}
+    </div>
+    <div class="mb-3">
+      <label for="id_time_block" class="form-label">Time</label>
+      {{ form.time_block }}
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+  </form>
+</div>
+{% endblock %}

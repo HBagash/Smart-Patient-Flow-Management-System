@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1>Feedback Analytics</h1>
+  <p>Total Feedback Entries: <strong>{{ total_count }}</strong></p>
+
+  <div class="row">
+    <div class="col-md-3">
+      <div class="card text-center mb-3">
+        <div class="card-header bg-primary text-white">Notification Usefulness (avg)</div>
+        <div class="card-body">
+          <h5 class="card-title">{{ avg_notification_usefulness }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center mb-3">
+        <div class="card-header bg-success text-white">Ease of Use (avg)</div>
+        <div class="card-body">
+          <h5 class="card-title">{{ avg_ease_of_use }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center mb-3">
+        <div class="card-header bg-info text-white">Overall Experience (avg)</div>
+        <div class="card-body">
+          <h5 class="card-title">{{ avg_overall }}</h5>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center mb-3">
+        <div class="card-header bg-warning text-white">Recommend? (avg)</div>
+        <div class="card-body">
+          <h5 class="card-title">{{ avg_recommendation }}</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- Distribution Charts -->
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <h4>Notification Usefulness Distribution (1–10)</h4>
+      <canvas id="notifDistChart" width="400" height="200"></canvas>
+    </div>
+    <div class="col-md-6">
+      <h4>Ease of Use Distribution (1–10)</h4>
+      <canvas id="easeDistChart" width="400" height="200"></canvas>
+    </div>
+  </div>
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <h4>Overall Experience Distribution (1–10)</h4>
+      <canvas id="overallDistChart" width="400" height="200"></canvas>
+    </div>
+    <div class="col-md-6">
+      <h4>Recommendation Distribution (1–10)</h4>
+      <canvas id="recommendDistChart" width="400" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const notifDist = JSON.parse('{{ dist_notif_json|safe }}');
+  const easeDist = JSON.parse('{{ dist_ease_json|safe }}');
+  const overallDist = JSON.parse('{{ dist_overall_json|safe }}');
+  const recommendDist = JSON.parse('{{ dist_recommend_json|safe }}');
+
+  const ratingLabels = ['1','2','3','4','5','6','7','8','9','10'];
+
+  // Notification Usefulness Chart
+  const ctxNotif = document.getElementById('notifDistChart').getContext('2d');
+  new Chart(ctxNotif, {
+    type: 'bar',
+    data: {
+      labels: ratingLabels,
+      datasets: [{
+        label: 'Count',
+        data: notifDist,
+        borderWidth: 1
+      }]
+    },
+    options: { scales: { y: { beginAtZero: true } } }
+  });
+
+  // Ease of Use Chart
+  const ctxEase = document.getElementById('easeDistChart').getContext('2d');
+  new Chart(ctxEase, {
+    type: 'bar',
+    data: {
+      labels: ratingLabels,
+      datasets: [{
+        label: 'Count',
+        data: easeDist,
+        borderWidth: 1
+      }]
+    },
+    options: { scales: { y: { beginAtZero: true } } }
+  });
+
+  // Overall Experience Chart
+  const ctxOverall = document.getElementById('overallDistChart').getContext('2d');
+  new Chart(ctxOverall, {
+    type: 'bar',
+    data: {
+      labels: ratingLabels,
+      datasets: [{
+        label: 'Count',
+        data: overallDist,
+        borderWidth: 1
+      }]
+    },
+    options: { scales: { y: { beginAtZero: true } } }
+  });
+
+  // Recommendation Chart
+  const ctxRecommend = document.getElementById('recommendDistChart').getContext('2d');
+  new Chart(ctxRecommend, {
+    type: 'bar',
+    data: {
+      labels: ratingLabels,
+      datasets: [{
+        label: 'Count',
+        data: recommendDist,
+        borderWidth: 1
+      }]
+    },
+    options: { scales: { y: { beginAtZero: true } } }
+  });
+</script>
+{% endblock %}
