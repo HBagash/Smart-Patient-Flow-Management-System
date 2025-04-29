@@ -19,12 +19,24 @@
     <div class="container">
       <h1 class="h4">Smart Patient Flow Management System</h1>
       <nav>
-        <a class="me-3" href="{% url 'dashboard_home' %}">Dashboard</a>
-        <a class="me-3" href="{% url 'login' %}">Login</a>
-        <a class="me-3" href="{% url 'register' %}">Register</a>
-        <a class="me-3" href="{% url 'video_view' %}">Detection</a>
-        <a class="me-3" href="{% url 'notification_request' %}">Notification Request</a>
-        <a href="{% url 'feedback_analytics' %}">Feedback Analytics</a>
+        {% if request.user.is_staff %}
+            <a class="me-3" href="{% url 'dashboard_home' %}">Dashboard</a>
+            <a class="me-3" href="{% url 'video_view' %}">Detection</a>
+            <a class="me-3" href="{% url 'feedback_analytics' %}">Feedback Analytics</a>
+        {% endif %}
+      
+        <a class="me-3" href="{% url 'notification_request' %}">Notification&nbsp;Request</a>
+      
+        {% if request.user.is_authenticated %}
+          <form action="{% url 'logout' %}" method="post" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-link p-0 me-3">Logout</button>
+          </form>
+        {% else %}
+          <a class="me-3" href="{% url 'login' %}">Login</a>
+          <a class="me-3" href="{% url 'register' %}">Register</a>
+        {% endif %}
+
       </nav>
     </div>
   </header>

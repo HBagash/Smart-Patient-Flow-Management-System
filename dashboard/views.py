@@ -7,6 +7,8 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from detection.models import PersonSession
 from detection.detection_module import generate_video_stream
+from django.contrib.admin.views.decorators import staff_member_required
+
 from .utils import (
     get_overview_data,
     get_arrivals_by_hour_custom,
@@ -27,6 +29,7 @@ def parse_uk_datetime(dt_string):
     except ValueError:
         return None
 
+@staff_member_required(login_url='login')
 def dashboard_all_in_one(request):
     #Outliers
     exclude_flag = request.GET.get('exclude_outliers', '1')
@@ -210,6 +213,7 @@ def dashboard_all_in_one(request):
     return render(request, 'dashboard/dashboard.html', context)
 
 @csrf_exempt
+@staff_member_required(login_url='login')
 def active_sessions_api(request):
     final_est = 0
     exclude_flag = request.GET.get('exclude_outliers', '1')
@@ -232,12 +236,14 @@ def active_sessions_api(request):
         })
     return JsonResponse({'active_sessions': data})
 
+@staff_member_required(login_url='login')
 def video_feed_dashboard(request):
     return StreamingHttpResponse(
         generate_video_stream(),
         content_type='multipart/x-mixed-replace; boundary=frame'
     )
 
+@staff_member_required(login_url='login')
 def export_dashboard_csv(request):
     exclude_flag = request.GET.get('exclude_outliers', '1')
     exclude_outliers = (exclude_flag == '1')
@@ -334,3 +340,4 @@ def export_dashboard_csv(request):
         writer.writerow([s.pk, s.enter_timestamp, s.exit_timestamp, s.duration_seconds])
 
     return response
+
