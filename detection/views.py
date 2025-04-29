@@ -13,13 +13,6 @@ def video_feed(request):
         content_type='multipart/x-mixed-replace; boundary=frame'
     )
 
-def test_detection(request):
-    with mss.mss() as sct:
-        monitor = sct.monitors[1]
-        frame = capture_screen(sct, monitor)
-        processed_frame, person_count = perform_detection_on_frame(frame)
-    return render(request, 'detection/test.html', {'count': person_count})
-
 def video_view(request):
     return render(request, 'detection/video.html')
 

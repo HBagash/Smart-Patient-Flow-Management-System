@@ -2,7 +2,6 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('test/', views.test_detection, name='test_detection'),
     path('video/', views.video_feed, name='video_feed'),
     path('video_view/', views.video_view, name='video_view'),
     path('update_zones_multiple/', views.update_detection_zones_multiple, name='update_detection_zones_multiple'),

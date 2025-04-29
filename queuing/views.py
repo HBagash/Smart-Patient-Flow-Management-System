@@ -6,6 +6,10 @@ from django.utils import timezone
 from datetime import datetime
 from .models import NotificationRequest, Feedback
 from dashboard.kalman import predict_appointment_kalman
+from django.db.models import Avg
+from django.http import JsonResponse
+import json
+from .models import Feedback
 
 class NotificationRequestForm(forms.ModelForm):
     class Meta:
@@ -45,7 +49,7 @@ def notification_request_view(request):
             instance.last_predicted_wait_mins = predicted_wait_secs/60.0
             instance.save()
 
-            # Color-coded for the success page
+            # Color code for the success success page
             if new_category.lower() == "low":
                 status_color = "green"
                 status_label = "Low wait time"
@@ -56,7 +60,7 @@ def notification_request_view(request):
                 status_color = "red"
                 status_label = "High wait time"
 
-            # Send the confirmation if not already sent
+            # Send the confirmation if i5 hasn't been already sent
             if not instance.confirmation_sent:
                 subject = f"Confirmation for {chosen_date} {chosen_time.strftime('%I:%M %p')}"
                 email_msg = (
@@ -142,13 +146,6 @@ def feedback_form_view(request, token):
     else:
         form = FeedbackForm(instance=fb)
     return render(request, 'queuing/feedback_form.html', {'form': form})
-
-
-
-from django.db.models import Avg
-from django.http import JsonResponse
-import json
-from .models import Feedback
 
 def feedback_analytics_view(request):
     feedbacks = Feedback.objects.filter(submitted=True)

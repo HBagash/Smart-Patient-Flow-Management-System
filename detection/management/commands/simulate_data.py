@@ -43,8 +43,6 @@ class Command(BaseCommand):
 
 
 def generate_simulated_data(num_sessions: int, num_days: int):
-    # PersonSession.objects.all().delete()
-    # DetectionRecord.objects.all().delete()
     end_time = timezone.now()
     start_time = end_time - timedelta(days=num_days)
 
