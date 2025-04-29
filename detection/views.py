@@ -3,20 +3,24 @@ from django.http import StreamingHttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .detection_module import capture_screen, perform_detection_on_frame, generate_video_stream
 from . import detection_module
+from django.contrib.admin.views.decorators import staff_member_required
 from .models import PersonSession
 import json
 import mss
 
+@staff_member_required(login_url='login')
 def video_feed(request):
     return StreamingHttpResponse(
         generate_video_stream(),
         content_type='multipart/x-mixed-replace; boundary=frame'
     )
 
+@staff_member_required(login_url='login')
 def video_view(request):
     return render(request, 'detection/video.html')
 
 @csrf_exempt
+@staff_member_required(login_url='login')
 def update_detection_zones_multiple(request):
     
     if request.method == "POST":
@@ -41,6 +45,7 @@ def update_detection_zones_multiple(request):
         return JsonResponse({"status": "error", "error": "POST request required"})
 
 @csrf_exempt
+@staff_member_required(login_url='login')
 def reset_detection_zone(request):
     if request.method == "POST":
         detection_module.DETECTION_ZONES = None

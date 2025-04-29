@@ -8,6 +8,7 @@ from .models import NotificationRequest, Feedback
 from dashboard.kalman import predict_appointment_kalman
 from django.db.models import Avg
 from django.http import JsonResponse
+from django.contrib.admin.views.decorators import staff_member_required
 import json
 from .models import Feedback
 
@@ -147,6 +148,7 @@ def feedback_form_view(request, token):
         form = FeedbackForm(instance=fb)
     return render(request, 'queuing/feedback_form.html', {'form': form})
 
+@staff_member_required(login_url='login')
 def feedback_analytics_view(request):
     feedbacks = Feedback.objects.filter(submitted=True)
     total_count = feedbacks.count()
