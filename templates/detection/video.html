@@ -57,17 +57,14 @@
 </div>
 
 <div id="videoContainer">
-    <!-- Live video feed in the background -->
     <img id="videoFeed" src="{% url 'video_feed' %}" alt="Live Video Feed"
         style="position:absolute; top:0; left:0; z-index:1;" />
 
-    <!-- Fabric.js canvas on top -->
     <canvas id="fabricCanvas" style="position:absolute; top:0; left:0; z-index:2;"></canvas>
 </div>
 
 <br />
 
-<!-- jQuery & Fabric.js -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js"></script>
 

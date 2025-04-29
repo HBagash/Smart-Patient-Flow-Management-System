@@ -32,15 +32,14 @@ def predict_appointment_kalman(appt_datetime, weeks_lookback=8, exclude_outliers
         hh=hr
     )
 
-    # Exclude outliers if requested
     if exclude_outliers:
         qs = qs.filter(duration_seconds__gt=1)
         qs = _exclude_outliers_qs(qs, 'duration_seconds')
 
     if not qs.exists():
-        return 600.0  # default fallback
+        return 600.0
 
-    x = 600.0  # initial guess (seconds)
+    x = 600.0
     P = 500.0
     Q = 100.0
     R = 200.0

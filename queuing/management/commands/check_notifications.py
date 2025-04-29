@@ -7,10 +7,10 @@ from queuing.models import NotificationRequest, Feedback
 from dashboard.kalman import predict_appointment_kalman
 
 class Command(BaseCommand):
-    help = """Checks for changes in predicted wait times, simulates them if requested, 
-              and does cleanup after arrival_time + offset with a feedback email."""
+    help = """Checks for any changes in the predicted wait times, simulates them if requested, 
+              and then does cleanup after arrival_time + offset with a feedback email."""
 
-    DEFAULT_CLEANUP_OFFSET_HOURS = 1.0  # 1 hour by default
+    DEFAULT_CLEANUP_OFFSET_HOURS = 1.0
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -112,7 +112,7 @@ class Command(BaseCommand):
 
     def send_feedback_email(self, req):
         fb = Feedback.objects.create(
-            notification_preference="email"  # or "sms" if your system knows
+            notification_preference="email"
         )
         feedback_link = f"http://127.0.0.1:8000/queuing/feedback/{fb.token}/"
 

@@ -11,30 +11,23 @@ class Command(BaseCommand):
 
         now = datetime.now()
         start_time = now - timedelta(days=7)
-        total_minutes = 7 * 24 * 60  # total minutes in 7 days
-        interval = 5  # interval in minutes
+        total_minutes = 7 * 24 * 60
+        interval = 5
 
         for minutes in range(0, total_minutes, interval):
             timestamp = start_time + timedelta(minutes=minutes)
-            # Compute the minute of the day (0-1439)
             minute_of_day = timestamp.hour * 60 + timestamp.minute
 
-            # Simulate a daily sine-wave pattern:
-            # - Peak (highest count) at noon (720 minutes) and trough at midnight.
-            # Normalize sine from -1 to 1 into a 0 to 1 scale.
             sine_val = (math.sin((minute_of_day - 720) * 2 * math.pi / 1440) + 1) / 2
 
-            # Base count and amplitude
-            base = 10      # minimum count during off-peak hours
-            amplitude = 30 # additional count at peak
+            base = 10
+            amplitude = 30
 
-            # Add Gaussian noise with a small standard deviation
             noise = random.gauss(0, 2)
 
             count = int(base + amplitude * sine_val + noise)
-            count = max(0, count)  # Ensure non-negative
+            count = max(0, count)
 
-            # Adjust weekend counts: lower activity on Saturday (5) and Sunday (6)
             if timestamp.weekday() >= 5:
                 count = int(count * 0.7)
 

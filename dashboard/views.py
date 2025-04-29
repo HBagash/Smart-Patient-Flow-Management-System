@@ -28,14 +28,14 @@ def parse_uk_datetime(dt_string):
         return None
 
 def dashboard_all_in_one(request):
-    # Outliers
+    #Outliers
     exclude_flag = request.GET.get('exclude_outliers', '1')
     exclude_outliers = (exclude_flag == '1')
 
-    # Simulated
+    #Simulated
     show_simulated = (request.GET.get('simulated','false').lower() == 'true')
 
-    # Date range
+    #Date range
     start_str = request.GET.get('start','')
     end_str = request.GET.get('end','')
     is_custom_range = False
@@ -50,7 +50,7 @@ def dashboard_all_in_one(request):
         end_time = timezone.now()
         start_time = end_time - timedelta(days=7)
 
-    # base queryset
+    #base queryset
     if show_simulated:
         base_qs = PersonSession.objects.filter(track_id__startswith='sim_')
         current_data_text = "Currently displaying simulated data."

@@ -33,7 +33,6 @@
 
       <!-- Preserve 'simulated' in form submission -->
       <input type="hidden" name="simulated" value="{{ show_simulated|yesno:'true,false' }}">
-      <!-- Preserve 'exclude_outliers' in form submission: '1' => exclude, '0' => include -->
       <input type="hidden" name="exclude_outliers" value="{% if exclude_outliers %}1{% else %}0{% endif %}">
 
       <div class="col-md-2">
