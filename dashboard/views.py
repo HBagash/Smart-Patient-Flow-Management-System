@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from detection.models import PersonSession
 from detection.detection_module import generate_video_stream
 from django.contrib.admin.views.decorators import staff_member_required
+
 from .utils import (
     get_overview_data,
     get_arrivals_by_hour_custom,
@@ -339,3 +340,4 @@ def export_dashboard_csv(request):
         writer.writerow([s.pk, s.enter_timestamp, s.exit_timestamp, s.duration_seconds])
 
     return response
+
