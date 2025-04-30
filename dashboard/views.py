@@ -313,7 +313,7 @@ def export_dashboard_csv(request):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     writer = csv.writer(response)
 
-    writer.writerow(["--- DASHBOARD CSV ---"])
+    writer.writerow(["DASHBOARD CSV"])
     writer.writerow(["Range", f"{start_time} to {end_time}"])
     writer.writerow(["Simulated", "True" if show_simulated else "False"])
     writer.writerow(["Exclude Outliers", "True" if exclude_outliers else "False"])
@@ -323,18 +323,18 @@ def export_dashboard_csv(request):
     writer.writerow(["Max Wait (sec)", overview['max_wait']])
     writer.writerow(["Min Wait (sec)", overview['min_wait']])
     writer.writerow([])
-    writer.writerow(["--- ARRIVALS BY HOUR ---"])
+    writer.writerow(["ARRIVALS BY HOUR"])
     writer.writerow(["Hour", "Count"])
     for row in arrivals_hourly:
         hr_str = row['h'].strftime("%d/%m/%Y %H:00") if row['h'] else "None"
         writer.writerow([hr_str, row['count']])
     writer.writerow([])
-    writer.writerow(["--- WAIT TIME DIST (5-min bins) ---"])
+    writer.writerow(["WAIT TIME DIST (5-min bins)"])
     writer.writerow(["Label", "Count"])
     for lbl, c in wait_dist:
         writer.writerow([lbl, c])
     writer.writerow([])
-    writer.writerow(["--- TOP 10 LONGEST WAITS ---"])
+    writer.writerow(["TOP 10 LONGEST WAITS"])
     writer.writerow(["pk", "enter_timestamp", "exit_timestamp", "duration_seconds"])
     for s in top_sessions:
         writer.writerow([s.pk, s.enter_timestamp, s.exit_timestamp, s.duration_seconds])

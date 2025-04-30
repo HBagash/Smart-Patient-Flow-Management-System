@@ -33,24 +33,20 @@ def notification_request_view(request):
             local_tz = timezone.get_current_timezone()
             combined_aware = timezone.make_aware(combined, local_tz)
 
-            # Exclude outliers in predicted wait
             predicted_wait_secs = predict_appointment_kalman(
                 combined_aware, weeks_lookback=8, exclude_outliers=True
             )
 
-            # For display: seconds if <60, else minutes
             if predicted_wait_secs < 60:
                 display_wait = f"{int(predicted_wait_secs)} seconds"
             else:
                 display_wait = f"{round(predicted_wait_secs/60, 2)} minutes"
 
-            # Store category/wait in instance
             new_category = instance.categorize_wait(predicted_wait_secs)
             instance.last_predicted_category = new_category
             instance.last_predicted_wait_mins = predicted_wait_secs/60.0
             instance.save()
 
-            # Color code for the success success page
             if new_category.lower() == "low":
                 status_color = "green"
                 status_label = "Low wait time"
@@ -61,7 +57,6 @@ def notification_request_view(request):
                 status_color = "red"
                 status_label = "High wait time"
 
-            # Send the confirmation if i5 hasn't been already sent
             if not instance.confirmation_sent:
                 subject = f"Confirmation for {chosen_date} {chosen_time.strftime('%I:%M %p')}"
                 email_msg = (
@@ -140,7 +135,6 @@ def feedback_form_view(request, token):
     if request.method == 'POST':
         form = FeedbackForm(request.POST, instance=fb)
         if form.is_valid():
-            # Mark as submitted
             fb.submitted = True
             form.save()
             return render(request, 'queuing/feedback_thanks.html')

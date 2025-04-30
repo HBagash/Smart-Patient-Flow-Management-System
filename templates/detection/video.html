@@ -124,7 +124,7 @@
         $("#saveZones").click(function () {
             const objects = canvas.getObjects().filter(obj => obj.type === "rect");
             if (!objects.length) {
-                alert("No squares found on the canvas!");
+                alert("There's no squares found on the canvas!");
                 return;
             }
 

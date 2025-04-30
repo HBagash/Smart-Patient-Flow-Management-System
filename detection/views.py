@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .detection_module import capture_screen, perform_detection_on_frame, generate_video_stream
 from . import detection_module
 from django.contrib.admin.views.decorators import staff_member_required
+
 from .models import PersonSession
 import json
 import mss

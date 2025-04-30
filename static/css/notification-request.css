@@ -1,0 +1,82 @@
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Background
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+main {
+  background-color: #171717;
+  min-height: 100vh;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Notification Request
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+.notification-form label {
+  color: #aab2d5;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.notification-form input,
+.notification-form select {
+  background-color: #0f111a;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+  width: 100%;
+  font-size: 1rem;
+  transition: 0.2s ease-in-out;
+}
+
+.notification-form input:focus,
+.notification-form select:focus {
+  outline: none;
+  border-color: #5465ff;
+  box-shadow: 0 0 0 2px rgba(84, 101, 255, 0.3);
+}
+
+.notification-form button {
+  background-color: #5465ff;
+  border: none;
+  color: white;
+  font-weight: 600;
+  padding: 8px 22px;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  transition: 0.2s ease;
+  margin-top: 10px;
+}
+
+.notification-form button:hover {
+  background-color: #4153e4;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Texts
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+.text-light-muted {
+  color: #aab2d5 !important;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Large Display
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+@media (min-width: 1440px) {
+  h2 {
+      font-size: 2.1rem;
+  }
+
+  .notification-form label,
+  .notification-form input,
+  .notification-form select,
+  .text-light-muted {
+      font-size: 1.05rem;
+  }
+}

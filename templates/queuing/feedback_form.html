@@ -1,42 +1,47 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/feedback_form.css' %}">
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
+<main class="feedback-form">
   <h2>We Value Your Feedback!</h2>
   <p>Please take a moment to rate the following questions on a scale of 1–10.</p>
+
   <form method="POST">
     {% csrf_token %}
 
     <div class="mb-3">
-      <label class="form-label" for="id_rating_notification_usefulness">
+      <label for="id_rating_notification_usefulness">
         1) From a scale of 1–10, how useful was the notification?
       </label>
       {{ form.rating_notification_usefulness }}
     </div>
 
     <div class="mb-3">
-      <label class="form-label" for="id_rating_ease_of_use">
+      <label for="id_rating_ease_of_use">
         2) From a scale of 1–10, how easy was it to use the system?
       </label>
       {{ form.rating_ease_of_use }}
     </div>
 
     <div class="mb-3">
-      <label class="form-label" for="id_rating_overall_experience">
+      <label for="id_rating_overall_experience">
         3) On a scale of 1–10, how would you rate your overall experience?
       </label>
       {{ form.rating_overall_experience }}
     </div>
 
     <div class="mb-3">
-      <label class="form-label" for="id_rating_recommendation">
+      <label for="id_rating_recommendation">
         4) From a scale of 1–10, how likely are you to recommend this system to others?
       </label>
       {{ form.rating_recommendation }}
     </div>
 
-    <button type="submit" class="btn btn-primary">Submit Feedback</button>
+    <button type="submit">Submit Feedback</button>
   </form>
-</div>
+</main>
 {% endblock %}
