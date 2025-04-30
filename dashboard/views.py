@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from detection.models import PersonSession
 from detection.detection_module import generate_video_stream
+from django.contrib.admin.views.decorators import staff_member_required
 from .utils import (
     get_overview_data,
     get_arrivals_by_hour_custom,
@@ -27,6 +28,7 @@ def parse_uk_datetime(dt_string):
     except ValueError:
         return None
 
+@staff_member_required(login_url='login')
 def dashboard_all_in_one(request):
     #Outliers
     exclude_flag = request.GET.get('exclude_outliers', '1')
@@ -210,6 +212,7 @@ def dashboard_all_in_one(request):
     return render(request, 'dashboard/dashboard.html', context)
 
 @csrf_exempt
+@staff_member_required(login_url='login')
 def active_sessions_api(request):
     final_est = 0
     exclude_flag = request.GET.get('exclude_outliers', '1')
@@ -232,12 +235,14 @@ def active_sessions_api(request):
         })
     return JsonResponse({'active_sessions': data})
 
+@staff_member_required(login_url='login')
 def video_feed_dashboard(request):
     return StreamingHttpResponse(
         generate_video_stream(),
         content_type='multipart/x-mixed-replace; boundary=frame'
     )
 
+@staff_member_required(login_url='login')
 def export_dashboard_csv(request):
     exclude_flag = request.GET.get('exclude_outliers', '1')
     exclude_outliers = (exclude_flag == '1')
@@ -307,7 +312,7 @@ def export_dashboard_csv(request):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     writer = csv.writer(response)
 
-    writer.writerow(["--- DASHBOARD CSV ---"])
+    writer.writerow(["DASHBOARD CSV"])
     writer.writerow(["Range", f"{start_time} to {end_time}"])
     writer.writerow(["Simulated", "True" if show_simulated else "False"])
     writer.writerow(["Exclude Outliers", "True" if exclude_outliers else "False"])
@@ -317,18 +322,18 @@ def export_dashboard_csv(request):
     writer.writerow(["Max Wait (sec)", overview['max_wait']])
     writer.writerow(["Min Wait (sec)", overview['min_wait']])
     writer.writerow([])
-    writer.writerow(["--- ARRIVALS BY HOUR ---"])
+    writer.writerow(["ARRIVALS BY HOUR"])
     writer.writerow(["Hour", "Count"])
     for row in arrivals_hourly:
         hr_str = row['h'].strftime("%d/%m/%Y %H:00") if row['h'] else "None"
         writer.writerow([hr_str, row['count']])
     writer.writerow([])
-    writer.writerow(["--- WAIT TIME DIST (5-min bins) ---"])
+    writer.writerow(["WAIT TIME DIST (5-min bins)"])
     writer.writerow(["Label", "Count"])
     for lbl, c in wait_dist:
         writer.writerow([lbl, c])
     writer.writerow([])
-    writer.writerow(["--- TOP 10 LONGEST WAITS ---"])
+    writer.writerow(["TOP 10 LONGEST WAITS"])
     writer.writerow(["pk", "enter_timestamp", "exit_timestamp", "duration_seconds"])
     for s in top_sessions:
         writer.writerow([s.pk, s.enter_timestamp, s.exit_timestamp, s.duration_seconds])

@@ -1,0 +1,138 @@
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Background
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+main {
+	background-color: #171717;
+	min-height: calc(100vh - 56px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Register Form
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+.register-wrapper {
+	width: 100%;
+	max-width: 500px;
+	padding: 2rem;
+}
+
+.register-wrapper h2 {
+	color: #ffffff;
+	font-weight: 600;
+	margin-bottom: 1.5rem;
+	text-align: center;
+	font-size: 2rem;
+}
+
+.register-wrapper form p {
+	display: flex;
+	flex-direction: column;
+	margin-bottom: 1.8rem;
+}
+
+.register-wrapper form label {
+	color: #aab2d5;
+	font-size: 1rem;
+	font-weight: 500;
+	margin-bottom: 0.5rem;
+}
+
+.register-wrapper .helptext {
+	color: #7a7f9a;
+	font-size: 0.9rem;
+	margin-top: 0.5rem;
+}
+
+.register-wrapper ul {
+	list-style: disc;
+	color: #7a7f9a;
+	font-size: 0.9rem;
+	margin: 0.5rem 0 1.5rem 1.5rem;
+	padding-left: 1.2rem;
+}
+
+.register-wrapper ul {
+	list-style: disc;
+}
+
+.register-wrapper form input {
+	background-color: #0f111a;
+	color: #ffffff;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 8px;
+	padding: 14px 16px;
+	font-size: 1.05rem;
+}
+
+.register-wrapper form input:focus {
+	outline: none;
+	border-color: #5465ff;
+	box-shadow: 0 0 0 2px rgba(84, 101, 255, 0.3);
+}
+
+.register-wrapper button {
+	background-color: #5465ff;
+	border: none;
+	color: white;
+	font-weight: 600;
+	padding: 12px 24px;
+	font-size: 1rem;
+	border-radius: 8px;
+	margin-top: 0.5rem;
+	transition: background-color 0.2s ease;
+	width: 100%;
+}
+
+.register-wrapper button:hover {
+	background-color: #4153e4;
+}
+
+.register-wrapper p:last-of-type {
+	color: #aab2d5;
+	font-size: 0.95rem;
+	margin-top: 1rem;
+	text-align: center;
+}
+
+.register-wrapper p:last-of-type a {
+	color: #5465ff;
+	font-weight: 500;
+	text-decoration: none;
+}
+
+.register-wrapper p:last-of-type a:hover {
+	text-decoration: underline;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Large Display
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+@media (min-width: 1600px) {
+	.register-wrapper {
+		max-width: 650px;
+		padding: 2.5rem;
+	}
+
+	.register-wrapper h2 {
+		font-size: 2.4rem;
+	}
+
+	.register-wrapper form input,
+	.register-wrapper button {
+		font-size: 1.1rem;
+	}
+
+	.register-wrapper form label,
+	.register-wrapper .helptext,
+	.register-wrapper ul,
+	.register-wrapper p {
+		font-size: 1.05rem;
+	}
+}

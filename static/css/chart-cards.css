@@ -1,0 +1,167 @@
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Background
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+main {
+    background-color: #171717;
+    min-height: 100vh;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Chart Cards
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+.chart-card {
+    background-color: #0f111a;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.3s linear;
+} .chart-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+}
+
+.chart-card::before {
+    display: none;
+}
+
+.chart-card .card-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 0.6rem;
+} .chart-card .card-title::after {
+    content: "";
+    display: block;
+    height: 1px;
+    margin-top: 0.55rem;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.00) 70%);
+}
+
+.chart-card canvas {
+    background: #0f111a;
+    border-radius: 8px;
+}
+
+.chart-card,
+.chart-card canvas {
+    --grid: rgba(255, 255, 255, 0.05);
+    --axis: #aab2d5;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Stat Cards
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+.card.stat-glass {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(8px);
+    color: #e4e7ff;
+    border-radius: 12px;
+}
+
+.card.stat-glass .card-header {
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #c6cbff;
+    border-top-left-radius: 11px;
+    border-top-right-radius: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.card.stat-glass .card-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0;
+    color: #ffffff;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Chart Cards Mobile
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+@media (max-width: 767px) {
+    .chart-card canvas {
+        height: 190px !important;
+    }
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Large Display
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+@media (min-width: 1440px) {
+    .chart-card .card-title {
+        font-size: 1.4rem;
+    }
+
+    .card.stat-glass .card-title {
+        font-size: 1.6rem;
+    }
+
+    .card.stat-glass .card-header {
+        font-size: 0.95rem;
+    }
+
+    h1 {
+        font-size: 2.1rem;
+    }
+
+    p,
+    .text-light-muted,
+    .small {
+        font-size: 1.05rem;
+    }
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Light Text Helpers
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+.text-light-muted {
+    color: #aab2d5 !important;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Live Detection Video
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+#videoContainer {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #0f111a;
+    box-shadow: 0 0 8px rgba(84, 101, 255, 0.15);
+    transition: box-shadow 0.3s ease;
+}
+
+#videoContainer:hover {
+    box-shadow: 0 0 12px rgba(84, 101, 255, 0.3);
+}
+
+#liveVideo {
+    width: 100%;
+    cursor: pointer;
+    border-radius: 10px;
+}
+
+.fullscreen-note {
+    color: #aab2d5;
+    font-size: 0.9rem;
+    margin-top: 0.6rem;
+    margin-left: 0.2rem;
+    font-style: italic;
+}

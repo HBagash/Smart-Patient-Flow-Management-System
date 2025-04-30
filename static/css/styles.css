@@ -1,0 +1,176 @@
+body, html {
+  overflow-x: hidden;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Variables
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+:root {
+  --dk-bg: #11131c;
+  --dk-bg-grad: radial-gradient(at 0% 0%, #20232d 0%, #0e1017 70%);
+  --accent: #4d5bff;
+  --text-muted: #848b9f;
+  --dk-top: #141414;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @General
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+.bg-dk-glass {
+  background: var(--dk-bg-grad);
+  backdrop-filter: blur(8px);
+}
+
+.bg-dk-normal {
+  background: var(--dk-bg);
+  backdrop-filter: blur(8px);
+}
+
+.border-bottom-dk {
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Sidebar
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+.sidebar-logo {
+  background: var(--accent);
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.sidebar-menu {
+  padding: 1rem 0;
+}
+
+.sidebar-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: 0.75rem 1rem 0.25rem;
+}
+
+.sidebar-link,
+.sidebar-link:visited,
+button.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 1rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #d6d9ff;
+  font-size: 0.92rem;
+  text-decoration: none;
+  width: 100%;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-link:hover,
+button.sidebar-link:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.sidebar-link.active {
+  color: #6f7dff;
+  font-weight: 600;
+  position: relative;
+}
+
+.sidebar-link.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  border-radius: 0 3px 3px 0;
+  background: #6f7dff;
+  box-shadow: 0 0 6px #6f7dff;
+}
+
+.sidebar-link i {
+  font-size: 1rem;
+}
+
+button.sidebar-link:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.nav-link.active {
+  color: #2962ff !important;
+  background: rgba(41,98,255,0.08);
+}
+
+.logout-link {
+  color: #b0b3c3 !important;
+  transition: color 0.15s, background 0.15s;
+}
+
+.logout-link:hover {
+  color: #ff5555 !important;
+  background: rgba(255,85,85,0.08);
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Cards
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+.card-glass {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  backdrop-filter: blur(6px);
+  color: #e1e4f0;
+}
+
+.table-darkglass > thead {
+  color: var(--text-muted);
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Desktop
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+@media (min-width: 992px) {
+  #spfmSidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: 260px;
+      transform: none !important;
+      visibility: visible !important;
+      border-right: 1px solid rgba(255,255,255,0.08);
+      z-index: 1030;
+  }
+
+  .offcanvas-backdrop.show {
+      display: none;
+  }
+
+  #spfmSidebar .btn-close {
+      display: none;
+  }
+
+  body {
+      margin: 0 0 0 260px;
+  }
+
+  header .btn {
+      display: none;
+  }
+}

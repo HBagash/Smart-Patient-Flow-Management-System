@@ -1,67 +1,76 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/chart-cards.css' %}">
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-  <h1>Feedback Analytics</h1>
-  <p>Total Feedback Entries: <strong>{{ total_count }}</strong></p>
+<div class="container-fluid px-lg-4 py-4">
+  <h2 class="fw-semibold text-light mb-1">Feedback Analytics</h2>
+  <p class="small text-light-muted mb-4">
+    Total feedback entries: <strong class="text-white">{{ total_count }}</strong>
+  </p>
 
-  <div class="row">
-    <div class="col-md-3">
-      <div class="card text-center mb-3">
-        <div class="card-header bg-primary text-white">Notification Usefulness (avg)</div>
-        <div class="card-body">
-          <h5 class="card-title">{{ avg_notification_usefulness }}</h5>
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card stat-glass text-center h-100">
+        <div class="card-header text-white bg-primary">Notification Usefulness (avg)</div>
+        <div class="card-body py-3">
+          <h4 class="card-title">{{ avg_notification_usefulness }}</h4>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card text-center mb-3">
-        <div class="card-header bg-success text-white">Ease of Use (avg)</div>
-        <div class="card-body">
-          <h5 class="card-title">{{ avg_ease_of_use }}</h5>
+    <div class="col-6 col-lg-3">
+      <div class="card stat-glass text-center h-100">
+        <div class="card-header text-white bg-success">Ease of Use (avg)</div>
+        <div class="card-body py-3">
+          <h4 class="card-title">{{ avg_ease_of_use }}</h4>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card text-center mb-3">
-        <div class="card-header bg-info text-white">Overall Experience (avg)</div>
-        <div class="card-body">
-          <h5 class="card-title">{{ avg_overall }}</h5>
+    <div class="col-6 col-lg-3">
+      <div class="card stat-glass text-center h-100">
+        <div class="card-header text-white bg-info">Overall Experience (avg)</div>
+        <div class="card-body py-3">
+          <h4 class="card-title">{{ avg_overall }}</h4>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card text-center mb-3">
-        <div class="card-header bg-warning text-white">Recommend? (avg)</div>
-        <div class="card-body">
-          <h5 class="card-title">{{ avg_recommendation }}</h5>
+    <div class="col-6 col-lg-3">
+      <div class="card stat-glass text-center h-100">
+        <div class="card-header text-white bg-warning">Recommend? (avg)</div>
+        <div class="card-body py-3">
+          <h4 class="card-title">{{ avg_recommendation }}</h4>
         </div>
       </div>
     </div>
   </div>
 
-  <hr>
-
-  <!-- Distribution Charts -->
-  <div class="row mt-4">
+  <div class="row g-4">
     <div class="col-md-6">
-      <h4>Notification Usefulness Distribution (1–10)</h4>
-      <canvas id="notifDistChart" width="400" height="200"></canvas>
+      <div class="chart-card p-3">
+        <h6 class="card-title">Notification Usefulness (1–10)</h6>
+        <canvas id="notifDistChart"></canvas>
+      </div>
     </div>
     <div class="col-md-6">
-      <h4>Ease of Use Distribution (1–10)</h4>
-      <canvas id="easeDistChart" width="400" height="200"></canvas>
-    </div>
-  </div>
-  <div class="row mt-4">
-    <div class="col-md-6">
-      <h4>Overall Experience Distribution (1–10)</h4>
-      <canvas id="overallDistChart" width="400" height="200"></canvas>
+      <div class="chart-card p-3">
+        <h6 class="card-title">Ease of Use (1–10)</h6>
+        <canvas id="easeDistChart"></canvas>
+      </div>
     </div>
     <div class="col-md-6">
-      <h4>Recommendation Distribution (1–10)</h4>
-      <canvas id="recommendDistChart" width="400" height="200"></canvas>
+      <div class="chart-card p-3">
+        <h6 class="card-title">Overall Experience (1–10)</h6>
+        <canvas id="overallDistChart"></canvas>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="chart-card p-3">
+        <h6 class="card-title">Recommendation (1–10)</h6>
+        <canvas id="recommendDistChart"></canvas>
+      </div>
     </div>
   </div>
 </div>
@@ -75,64 +84,60 @@
 
   const ratingLabels = ['1','2','3','4','5','6','7','8','9','10'];
 
-  // Notification Usefulness Chart
-  const ctxNotif = document.getElementById('notifDistChart').getContext('2d');
-  new Chart(ctxNotif, {
-    type: 'bar',
-    data: {
-      labels: ratingLabels,
-      datasets: [{
-        label: 'Count',
-        data: notifDist,
-        borderWidth: 1
-      }]
-    },
-    options: { scales: { y: { beginAtZero: true } } }
-  });
+  Chart.defaults.color = '#d4d8f0';
+  Chart.defaults.font.family = "'Segoe UI', 'sans-serif'";
+  Chart.defaults.plugins.tooltip.backgroundColor = '#222738';
+  Chart.defaults.plugins.tooltip.borderColor = '#5465ff';
+  Chart.defaults.plugins.tooltip.borderWidth = 1;
+  Chart.defaults.plugins.tooltip.titleColor = '#ffffff';
+  Chart.defaults.plugins.tooltip.bodyColor = '#c2c8ff';
+  Chart.defaults.plugins.legend.labels.color = '#a5b1ff';
 
-  // Ease of Use Chart
-  const ctxEase = document.getElementById('easeDistChart').getContext('2d');
-  new Chart(ctxEase, {
-    type: 'bar',
-    data: {
-      labels: ratingLabels,
-      datasets: [{
-        label: 'Count',
-        data: easeDist,
-        borderWidth: 1
-      }]
-    },
-    options: { scales: { y: { beginAtZero: true } } }
-  });
+  const gridLines = {
+    color: "rgba(255,255,255,0.06)",
+    borderDash: [4, 4]
+  };
 
-  // Overall Experience Chart
-  const ctxOverall = document.getElementById('overallDistChart').getContext('2d');
-  new Chart(ctxOverall, {
-    type: 'bar',
-    data: {
-      labels: ratingLabels,
-      datasets: [{
-        label: 'Count',
-        data: overallDist,
-        borderWidth: 1
-      }]
-    },
-    options: { scales: { y: { beginAtZero: true } } }
-  });
+  function createDarkChart(id, data) {
+    const ctx = document.getElementById(id).getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ratingLabels,
+        datasets: [{
+          label: 'Count',
+          data: data,
+          backgroundColor: '#5465ff',
+          borderRadius: 6,
+          barThickness: 24
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            grid: gridLines,
+            ticks: { color: '#aab2d5' }
+          },
+          y: {
+            beginAtZero: true,
+            grid: gridLines,
+            ticks: { color: '#aab2d5' }
+          }
+        },
+        plugins: {
+          tooltip: {
+            padding: 10,
+            cornerRadius: 6
+          }
+        }
+      }
+    });
+  }
 
-  // Recommendation Chart
-  const ctxRecommend = document.getElementById('recommendDistChart').getContext('2d');
-  new Chart(ctxRecommend, {
-    type: 'bar',
-    data: {
-      labels: ratingLabels,
-      datasets: [{
-        label: 'Count',
-        data: recommendDist,
-        borderWidth: 1
-      }]
-    },
-    options: { scales: { y: { beginAtZero: true } } }
-  });
+  createDarkChart('notifDistChart', notifDist);
+  createDarkChart('easeDistChart', easeDist);
+  createDarkChart('overallDistChart', overallDist);
+  createDarkChart('recommendDistChart', recommendDist);
 </script>
 {% endblock %}

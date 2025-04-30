@@ -10,7 +10,7 @@ class Command(BaseCommand):
     help = """Checks for any changes in the predicted wait times, simulates them if requested, 
               and then does cleanup after arrival_time + offset with a feedback email."""
 
-    DEFAULT_CLEANUP_OFFSET_HOURS = 1.0
+    DEFAULT_CLEANUP_OFFSET_HOURS = 1
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -25,29 +25,35 @@ class Command(BaseCommand):
             default=None,
             help='Override the 1-hour cleanup offset with an N-second offset for testing.'
         )
+        parser.add_argument(
+        '--instant-feedback',
+        action='store_true',
+        help='If set, feedback will immediately be sent off right after confirmation.'
+        )
 
     def handle(self, *args, **options):
         now = timezone.now()
         simulate_category = options.get('simulate')
         simulate_cleanup_secs = options.get('simulate_cleanup_secs', None)
+        instant_feedback = options.get('instant_feedback', False)
 
         if simulate_cleanup_secs is not None:
             cleanup_offset_hours = simulate_cleanup_secs / 3600.0
         else:
             cleanup_offset_hours = self.DEFAULT_CLEANUP_OFFSET_HOURS
 
-        self.recheck_requests(now, simulate_category)
+        self.recheck_requests(now, simulate_category, instant_feedback)
         self.cleanup_old_requests(now, cleanup_offset_hours)
 
         self.stdout.write(self.style.SUCCESS(
             f"Notification re-check completed with cleanup offset = {cleanup_offset_hours} hr(s)."
         ))
 
-    def recheck_requests(self, now, simulate_category):
+    def recheck_requests(self, now, simulate_category, instant_feedback):
         today = now.date()
         future_reqs = NotificationRequest.objects.filter(
             date__gte=today,
-            status__in=["pending","sent"]
+            status__in=["pending", "sent"]
         )
 
         for req in future_reqs:
@@ -69,6 +75,11 @@ class Command(BaseCommand):
                 req.last_predicted_wait_mins = predicted_secs / 60
                 req.last_predicted_category = new_category
                 req.save()
+
+                if instant_feedback:
+                    self.send_feedback_email(req)
+                    req.delete()
+
 
     def send_followup_email(self, req, old_cat, new_cat, predicted_secs):
         if predicted_secs < 60:

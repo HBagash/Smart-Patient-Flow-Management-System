@@ -1,515 +1,453 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/chart-cards.css' %}">
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-  {% if is_custom_range %}
-    <h1>
-      All-In-One Dashboard {{ analytics_outlier_label }}
-      ({{ start_time|date:"d/m/Y H:i" }} - {{ end_time|date:"d/m/Y H:i" }})
-    </h1>
-  {% else %}
-    <h1>
-      All-In-One Dashboard {{ analytics_outlier_label }}
+<div class="container-fluid px-lg-4 py-4">
+  <h2 class="fw-semibold text-light mb-1">
+    All-In-One Dashboard {{ analytics_outlier_label }}
+    {% if is_custom_range %}
+      ({{ start_time|date:"d/m/Y H:i" }} – {{ end_time|date:"d/m/Y H:i" }})
+    {% else %}
       (Last 24 Hours)
-    </h1>
-  {% endif %}
-
-  <!-- Date Range Form -->
-  <form method="GET" action="">
-    <div class="row mb-3">
-      <div class="col-md-3">
-        <label class="form-label">Start (dd/mm/yyyy HH:MM)</label>
-        <input type="text" name="start" class="form-control"
-               placeholder="01/02/2025 09:00"
-               value="{% if start_time %}{{ start_time|date:'d/m/Y H:i' }}{% endif %}">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">End (dd/mm/yyyy HH:MM)</label>
-        <input type="text" name="end" class="form-control"
-               placeholder="02/02/2025 18:00"
-               value="{% if end_time %}{{ end_time|date:'d/m/Y H:i' }}{% endif %}">
-      </div>
-
-      <!-- Preserve 'simulated' in form submission -->
-      <input type="hidden" name="simulated" value="{{ show_simulated|yesno:'true,false' }}">
-      <input type="hidden" name="exclude_outliers" value="{% if exclude_outliers %}1{% else %}0{% endif %}">
-
-      <div class="col-md-2">
-        <label>&nbsp;</label>
-        <button type="submit" class="btn btn-primary form-control">Apply</button>
-      </div>
-    </div>
-  </form>
-
-  <p>{{ current_data_text }}</p>
-  <p>
-    Data from:
-    <strong>{{ start_time|date:'d/m/Y H:i' }}</strong>
-    to
-    <strong>{{ end_time|date:'d/m/Y H:i' }}</strong>
+    {% endif %}
+  </h2>
+  <p class="small text-light-muted mb-4">
+    {{ current_data_text }}<br>
+    Data from <strong class="text-white">{{ start_time|date:"d/m/Y H:i" }}</strong>
+    to <strong class="text-white">{{ end_time|date:"d/m/Y H:i" }}</strong>
   </p>
 
-  <!-- Outlier Toggle -->
-  <div class="mb-3">
-    {% if exclude_outliers %}
-      <form method="GET" action="" style="display:inline;">
-        {% for k, v in request.GET.items %}
-          {% if k != 'exclude_outliers' %}
-            <input type="hidden" name="{{ k }}" value="{{ v }}">
-          {% endif %}
-        {% endfor %}
-        <input type="hidden" name="exclude_outliers" value="0">
-        <button type="submit" class="btn btn-secondary">
-          Show All (Include Outliers)
-        </button>
-      </form>
-      <span class="ms-3">Currently <strong>excluding</strong> outliers.</span>
-    {% else %}
-      <form method="GET" action="" style="display:inline;">
-        {% for k, v in request.GET.items %}
-          {% if k != 'exclude_outliers' %}
-            <input type="hidden" name="{{ k }}" value="{{ v }}">
-          {% endif %}
-        {% endfor %}
-        <input type="hidden" name="exclude_outliers" value="1">
-        <button type="submit" class="btn btn-warning">
-          Exclude Outliers
-        </button>
-      </form>
-      <span class="ms-3">Currently <strong>including</strong> outliers.</span>
-    {% endif %}
-  </div>
 
-  <!-- Overview Cards -->
-  <div class="row">
-    <div class="col-md-3">
-      <div class="card text-center mb-3">
+  <!--KPI Cards-->
+  <div class="row g-3 mb-5">
+    <div class="col-6 col-lg-3">
+      <div class="card stat-glass text-center h-100">
         <div class="card-header bg-primary text-white">Total Arrivals</div>
-        <div class="card-body">
-          <h5 class="card-title">{{ total_arrivals }}</h5>
+        <div class="card-body py-3">
+          <h4 class="card-title mb-0">{{ total_arrivals }}</h4>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card text-center mb-3">
+    <div class="col-6 col-lg-3">
+      <div class="card stat-glass text-center h-100">
         <div class="card-header bg-success text-white">Avg Wait (min)</div>
-        <div class="card-body">
-          <h5 class="card-title">{{ avg_wait }}</h5>
+        <div class="card-body py-3">
+          <h4 class="card-title mb-0">{{ avg_wait }}</h4>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card text-center mb-3">
+    <div class="col-6 col-lg-3">
+      <div class="card stat-glass text-center h-100">
         <div class="card-header bg-danger text-white">Max Wait (min)</div>
-        <div class="card-body">
-          <h5 class="card-title">{{ max_wait }}</h5>
+        <div class="card-body py-3">
+          <h4 class="card-title mb-0">{{ max_wait }}</h4>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card text-center mb-3">
+    <div class="col-6 col-lg-3">
+      <div class="card stat-glass text-center h-100">
         <div class="card-header bg-info text-white">Min Wait (min)</div>
-        <div class="card-body">
-          <h5 class="card-title">{{ min_wait }}</h5>
+        <div class="card-body py-3">
+          <h4 class="card-title mb-0">{{ min_wait }}</h4>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Predict Appointment Duration -->
-  <div class="row mt-5">
-    <div class="col-md-12">
-      <h2>Predict Appointment Duration</h2>
-      {% if predict_error_message %}
-        <div class="alert alert-danger">{{ predict_error_message }}</div>
-      {% endif %}
-      <form method="POST" action="?{{ request.GET.urlencode|safe }}">
-        {% csrf_token %}
-        <input type="hidden" name="predict_form" value="1">
-        <div class="mb-3">
-          <label class="form-label">Date (dd/mm/yyyy)</label>
-          <input type="text" class="form-control"
-                 name="predict_date"
-                 placeholder="01/02/2025"
-                 value="{{ predict_date }}">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Time (HH:MM)</label>
-          <input type="text" class="form-control"
-                 name="predict_time"
-                 placeholder="09:30"
-                 value="{{ predict_time }}">
-        </div>
-        <button type="submit" class="btn btn-primary">Predict</button>
-      </form>
-      {% if predict_predicted_minutes %}
-        <div class="mt-3">
-          <p>Predicted Appointment Duration:
-            <strong>{{ predict_predicted_minutes }} minutes</strong>
-          </p>
-        </div>
+  <div class="row g-4 align-items-start mb-5">
+<!--Date Range & Filters-->
+<div class="col-lg-6">
+  <div class="chart-card p-4 h-100">
+    <h6 class="card-title">Filter Data</h6>
+    <form method="GET">
+      <div class="mb-3">
+        <label class="form-label text-light-muted">Start (dd/mm/yyyy HH:MM)</label>
+        <input name="start" class="form-control"
+               value="{% if start_time %}{{ start_time|date:'d/m/Y H:i' }}{% endif %}"
+               placeholder="01/02/2025 09:00">
+      </div>
+      <div class="mb-3">
+        <label class="form-label text-light-muted">End (dd/mm/yyyy HH:MM)</label>
+        <input name="end" class="form-control"
+               value="{% if end_time %}{{ end_time|date:'d/m/Y H:i' }}{% endif %}"
+               placeholder="02/02/2025 18:00">
+      </div>
+
+      <input type="hidden" name="exclude_outliers" value="{% if exclude_outliers %}1{% else %}0{% endif %}">
+      <input type="hidden" name="simulated" value="{{ show_simulated|yesno:'true,false' }}">
+      <button class="btn btn-primary w-100 mb-3">Apply</button>
+    </form>
+
+    <!--Outlier Toggle-->
+    <div class="mb-2">
+      {% if exclude_outliers %}
+        <form method="GET" class="d-inline">
+          {% for k,v in request.GET.items %}{% if k != 'exclude_outliers' %}
+            <input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+          <input type="hidden" name="exclude_outliers" value="0">
+          <button class="btn btn-outline-light btn-sm">Show All (Include Outliers)</button>
+        </form>
+        <span class="ms-2 text-light-muted">Currently <strong class="text-white">excluding</strong> outliers.</span>
+      {% else %}
+        <form method="GET" class="d-inline">
+          {% for k,v in request.GET.items %}{% if k != 'exclude_outliers' %}
+            <input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+          <input type="hidden" name="exclude_outliers" value="1">
+          <button class="btn btn-outline-warning btn-sm">Exclude Outliers</button>
+        </form>
+        <span class="ms-2 text-light-muted">Currently <strong class="text-white">including</strong> outliers.</span>
       {% endif %}
     </div>
-  </div>
 
-  <!-- Toggle Simulated vs. Real -->
-  <div class="row mt-5">
-    <div class="col-md-12">
+    <!--Simulated Toggle-->
+    <div class="mt-3">
       {% if show_simulated %}
-        <form method="GET" action="" style="display:inline;">
-          {% for k,v in request.GET.items %}
-            {% if k != 'simulated' %}
-              <input type="hidden" name="{{ k }}" value="{{ v }}">
-            {% endif %}
-          {% endfor %}
+        <form method="GET" class="d-inline">
+          {% for k,v in request.GET.items %}{% if k != 'simulated' %}
+            <input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
           <input type="hidden" name="simulated" value="false">
-          <button type="submit" class="btn btn-info">Show Real Data</button>
+          <button class="btn btn-outline-warning btn-sm">Show Real Data</button>
         </form>
+        <span class="ms-2 text-light-muted">Currently <strong class="text-white">showing simulated data</strong>.</span>
       {% else %}
-        <form method="GET" action="" style="display:inline;">
-          {% for k,v in request.GET.items %}
-            {% if k != 'simulated' %}
-              <input type="hidden" name="{{ k }}" value="{{ v }}">
-            {% endif %}
-          {% endfor %}
+        <form method="GET" class="d-inline">
+          {% for k,v in request.GET.items %}{% if k != 'simulated' %}
+            <input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
           <input type="hidden" name="simulated" value="true">
-          <button type="submit" class="btn btn-info">Show Simulated Data</button>
+          <button class="btn btn-outline-light btn-sm">Show Simulated Data</button>
         </form>
+        <span class="ms-2 text-light-muted">Currently <strong class="text-white">showing real data</strong>.</span>
       {% endif %}
     </div>
   </div>
+</div>
 
-  <!-- Example: Detection Video -->
-  <div class="row mt-5">
-    <div class="col-md-12">
-      <h4>Live Detection Video {{ analytics_outlier_label }}</h4>
-      <img src="{% url 'dashboard_video_feed' %}" 
-           alt="Live Stream"
-           style="border:1px solid #ccc; width:100%; max-width:700px;" />
+  
+    <!--Predict Appointment Duration-->
+    <div class="col-lg-6">
+      <div class="chart-card p-4 h-100">
+        <h6 class="card-title">Predict Appointment Duration</h6>
+        {% if predict_error_message %}
+          <div class="alert alert-danger small">{{ predict_error_message }}</div>
+        {% endif %}
+        <form method="POST" action="?{{ request.GET.urlencode|safe }}">
+          {% csrf_token %}
+          <input type="hidden" name="predict_form" value="1">
+          <div class="mb-3">
+            <label class="form-label text-light-muted">Date (dd/mm/yyyy)</label>
+            <input name="predict_date" class="form-control"
+                   value="{{ predict_date }}" placeholder="01/02/2025">
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-light-muted">Time (HH:MM)</label>
+            <input name="predict_time" class="form-control"
+                   value="{{ predict_time }}" placeholder="09:30">
+          </div>
+          <button class="btn btn-primary w-100">Predict</button>
+        </form>
+        {% if predict_predicted_minutes %}
+          <p class="text-light-muted mt-3 mb-0">
+            Predicted Duration: <strong class="text-white">{{ predict_predicted_minutes }} min</strong>
+          </p>
+        {% endif %}
+      </div>
     </div>
   </div>
+  
+  <!--Live Detection Video-->
+<div class="row mt-5">
+  <div class="col-md-12">
+    <h4 class="text-light">Live Detection Video</h4>
+    <div id="videoContainer" style="max-width: 700px; border: 1px solid #ccc; position: relative;">
+      <img id="liveVideo" src="{% url 'dashboard_video_feed' %}" alt="Live Stream" style="width: 100%; cursor: pointer;" onclick="toggleFullScreen('videoContainer')" />
+    </div>
+    <p class="fullscreen-note">Click the video to toggle fullscreen mode.</p>
+  </div>
+</div>
 
-  <!-- Active Sessions -->
-  <div class="row mt-5">
-    <div class="col-md-12">
-      <h4>Active Sessions (Real-time) {{ analytics_outlier_label }}</h4>
-      <table class="table table-striped" id="activeSessionsTable">
-        <thead>
-          <tr>
-            <th>Track ID</th>
-            <th>Enter Timestamp</th>
-            <th>Elapsed (sec)</th>
-            <th>Predicted Remaining (sec)</th>
-            <th>Late?</th>
+<!--Active Sessions-->
+<div class="chart-card p-3 mb-5">
+  <h6 class="card-title mb-3">
+    Active Sessions (Real-time)
+  </h6>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover table-striped mb-0 rounded-3 overflow-hidden" id="activeSessionsTable">
+      <thead>
+        <tr class="text-light">
+          <th>Track ID</th>
+          <th>Enter Timestamp</th>
+          <th>Elapsed (sec)</th>
+          <th>Predicted Remaining (sec)</th>
+          <th>Late?</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in active_sessions %}
+          <tr class="text-light-muted">
+            <td>{{ s.track_id }}</td>
+            <td>{{ s.enter_timestamp }}</td>
+            <td>{{ s.waiting_time|floatformat:2 }}</td>
+            <td>
+              {% for info in predicted_info %}
+                {% if info.track_id == s.track_id %}
+                  {{ info.remaining_sec }}
+                {% endif %}
+              {% endfor %}
+            </td>
+            <td>
+              {% for info in predicted_info %}
+                {% if info.track_id == s.track_id %}
+                  {{ info.is_late }}
+                {% endif %}
+              {% endfor %}
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {% for s in active_sessions %}
-            <tr>
-              <td>{{ s.track_id }}</td>
-              <td>{{ s.enter_timestamp }}</td>
-              <td>{{ s.waiting_time|floatformat:2 }}</td>
-              <td>
-                {% for info in predicted_info %}
-                  {% if info.track_id == s.track_id %}
-                    {{ info.remaining_sec }}
-                  {% endif %}
-                {% endfor %}
-              </td>
-              <td>
-                {% for info in predicted_info %}
-                  {% if info.track_id == s.track_id %}
-                    {{ info.is_late }}
-                  {% endif %}
-                {% endfor %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <p class="text-muted" id="noActiveMsg" style="display:none;">No active sessions currently.</p>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p id="noActiveMsg" class="text-center text-light-muted mt-3" style="display: none;">
+      No active sessions currently.
+    </p>
+  </div>
+</div>
+
+
+
+<!--Arrivals by Hour & Wait-Time-->
+<div class="row g-4 mb-5">
+  <div class="col-lg-6">
+    <div class="chart-card p-3">
+      <h6 class="card-title">Arrivals by Hour</h6>
+      <canvas id="peakHoursChart"></canvas>
     </div>
   </div>
-
-  <!-- Arrivals by Hour -->
-  <div class="row mt-4">
-    <div class="col-md-6">
-      <h4>Arrivals by Hour {{ analytics_outlier_label }}
-        {% if is_custom_range %}
-          ({{ start_time|date:"d/m/Y H:i" }} - {{ end_time|date:"d/m/Y H:i" }})
-        {% else %}
-          (Last 24h)
-        {% endif %}
-      </h4>
-      <canvas id="peakHoursChart" width="400" height="200"></canvas>
-    </div>
-
-    <!-- Wait Time Distribution -->
-    <div class="col-md-6">
-      <h4>Wait Time Distribution {{ analytics_outlier_label }}
-        {% if is_custom_range %}
-          ({{ start_time|date:"d/m/Y H:i" }} - {{ end_time|date:"d/m/Y H:i" }}, 5-min bins)
-        {% else %}
-          (Last 24h, 5-min bins)
-        {% endif %}
-      </h4>
-      <canvas id="waitDistChart" width="400" height="200"></canvas>
+  <div class="col-lg-6">
+    <div class="chart-card p-3">
+      <h6 class="card-title">Wait-Time Distribution (5 min bins)</h6>
+      <canvas id="waitDistChart"></canvas>
       {% if dist_counts_json == "[]" %}
-        <p class="text-muted">No wait time data in this window.</p>
+        <p class="small text-light-muted mt-2 mb-0">No wait-time data in this window.</p>
       {% endif %}
     </div>
   </div>
+</div>
 
-  <!-- Top 10 Longest Waits -->
-  <div class="row mt-5">
-    <div class="col-md-12">
-      {% if is_custom_range %}
-        <h4>Top 10 Longest Waits {{ analytics_outlier_label }}
-          ({{ start_time|date:"d/m/Y H:i" }} - {{ end_time|date:"d/m/Y H:i" }})
-        </h4>
-      {% else %}
-        <h4>Top 10 Longest Waits {{ analytics_outlier_label }} (Last 24h)</h4>
-      {% endif %}
-      <table class="table table-striped">
-        <thead>
-          <tr>
-            <th>ID (pk)</th>
-            <th>Enter</th>
-            <th>Exit</th>
-            <th>Duration (sec)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if top_sessions %}
-            {% for s in top_sessions %}
-            <tr>
+<!--Top 10 Longest Waits-->
+<div class="chart-card p-3 mb-5">
+  <h6 class="card-title mb-3">
+    Top 10 Longest Waits {{ analytics_outlier_label }}
+    {% if is_custom_range %}
+      ({{ start_time|date:"d/m/Y H:i" }} – {{ end_time|date:"d/m/Y H:i" }})
+    {% else %}
+      (Last 24h)
+    {% endif %}
+  </h6>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover table-striped mb-0 rounded-3 overflow-hidden">
+      <thead>
+        <tr class="text-light">
+          <th>ID (pk)</th>
+          <th>Enter</th>
+          <th>Exit</th>
+          <th>Duration (sec)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if top_sessions %}
+          {% for s in top_sessions %}
+            <tr class="text-light-muted">
               <td>{{ s.pk }}</td>
               <td>{{ s.enter_timestamp }}</td>
               <td>{{ s.exit_timestamp }}</td>
               <td>{{ s.duration_seconds }}</td>
             </tr>
-            {% endfor %}
-          {% else %}
-            <tr><td colspan="4">No completed sessions found.</td></tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Day-of-Week & Hour-of-Day Arrivals -->
-  <div class="row mt-5">
-    <div class="col-md-6">
-      <h4>Arrivals by Day-of-Week {{ analytics_outlier_label }}
-        {% if is_custom_range %}
-          (Custom Range)
+          {% endfor %}
         {% else %}
-          (Last 7d)
+          <tr>
+            <td colspan="4" class="text-center text-light-muted">No completed sessions found.</td>
+          </tr>
         {% endif %}
-      </h4>
-      <canvas id="dowChart" width="400" height="200"></canvas>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!--DOW and Hrs-->
+<div class="row g-4 mb-5">
+  <div class="col-lg-6">
+    <div class="chart-card p-3">
+      <h6 class="card-title">Arrivals by Day-of-Week</h6>
+      <canvas id="dowChart"></canvas>
       {% if dow_counts_json == "[]" %}
-        <p class="text-muted">No data for day-of-week arrivals.</p>
+        <p class="small text-light-muted mt-2 mb-0">No data for day-of-week arrivals.</p>
       {% endif %}
     </div>
-    <div class="col-md-6">
-      <h4>Arrivals by Hour-of-Day {{ analytics_outlier_label }}
-        {% if is_custom_range %}
-          (Custom Range)
-        {% else %}
-          (Last 7d)
-        {% endif %}
-      </h4>
-      <canvas id="todChart" width="400" height="200"></canvas>
+  </div>
+  <div class="col-lg-6">
+    <div class="chart-card p-3">
+      <h6 class="card-title">Arrivals by Hour-of-Day</h6>
+      <canvas id="todChart"></canvas>
       {% if tod_counts_json == "[]" %}
-        <p class="text-muted">No data for time-of-day arrivals.</p>
+        <p class="small text-light-muted mt-2 mb-0">No data for hour-of-day arrivals.</p>
       {% endif %}
-    </div>
-  </div>
-
-  <!-- Avg Wait by Day-of-Week & Hour-of-Day -->
-  <div class="row mt-5">
-    <div class="col-md-6">
-      <h4>Avg Wait Time by Day-of-Week {{ analytics_outlier_label }}
-        {% if is_custom_range %}
-          (Custom Range)
-        {% else %}
-          (Last 7d)
-        {% endif %}
-      </h4>
-      <canvas id="dowWaitChart" width="400" height="200"></canvas>
-      {% if dow_wait_values_json == "[]" %}
-        <p class="text-muted">No wait data for day-of-week distribution.</p>
-      {% endif %}
-    </div>
-    <div class="col-md-6">
-      <h4>Avg Wait Time by Hour-of-Day {{ analytics_outlier_label }}
-        {% if is_custom_range %}
-          (Custom Range)
-        {% else %}
-          (Last 7d)
-        {% endif %}
-      </h4>
-      <canvas id="hodWaitChart" width="400" height="200"></canvas>
-      {% if hod_wait_values_json == "[]" %}
-        <p class="text-muted">No wait data for hour-of-day distribution.</p>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Export CSV -->
-  <div class="row mt-4">
-    <div class="col-md-12">
-      <form method="GET" action="{% url 'dashboard_export_csv' %}" style="display:inline;">
-        {% for k, v in request.GET.items %}
-          <input type="hidden" name="{{ k }}" value="{{ v }}">
-        {% endfor %}
-        <button type="submit" class="btn btn-primary">Export CSV</button>
-      </form>
     </div>
   </div>
 </div>
 
+<!--Avg Wait (min) by Day-of-Week-->
+<div class="row g-4 mb-5">
+  <div class="col-lg-6">
+    <div class="chart-card p-3">
+      <h6 class="card-title">Avg Wait (min) by Day-of-Week</h6>
+      <canvas id="dowWaitChart"></canvas>
+      {% if dow_wait_values_json == "[]" %}
+        <p class="small text-light-muted mt-2 mb-0">No wait data for day-of-week distribution.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="chart-card p-3">
+      <h6 class="card-title">Avg Wait (min) by Hour-of-Day</h6>
+      <canvas id="hodWaitChart"></canvas>
+      {% if hod_wait_values_json == "[]" %}
+        <p class="small text-light-muted mt-2 mb-0">No wait data for hour-of-day distribution.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!--Export CSV-->
+<div class="chart-card p-3 mb-5">
+  <h6 class="card-title mb-3">Export Data</h6>
+  <form method="GET" action="{% url 'dashboard_export_csv' %}">
+    {% for k, v in request.GET.items %}
+      <input type="hidden" name="{{ k }}" value="{{ v }}">
+    {% endfor %}
+    <button type="submit" class="btn btn-primary btn-sm">Download CSV</button>
+  </form>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  function refreshActiveSessions() {
-    fetch("{% url 'active_sessions_api' %}", {
-      method: 'POST',
-      headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-    })
-    .then(resp => resp.json())
-    .then(data => {
-      const tableBody = document.querySelector("#activeSessionsTable tbody");
-      const noActiveMsg = document.getElementById("noActiveMsg");
-      tableBody.innerHTML = "";
-      const sessions = data.active_sessions;
-      if (sessions.length === 0) {
-        noActiveMsg.style.display = 'block';
-        document.getElementById('activeSessionsTable').style.display = 'none';
-        return;
-      } else {
-        noActiveMsg.style.display = 'none';
-        document.getElementById('activeSessionsTable').style.display = 'table';
-      }
-      sessions.forEach(s => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
+
+function refreshActiveSessions () {
+  fetch("{% url 'active_sessions_api' %}", {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+  })
+  .then(r => r.json())
+  .then(j => {
+    const body   = document.querySelector('#activeSessionsTable tbody');
+    const empty  = document.getElementById('noActiveMsg');
+    body.innerHTML = '';
+    if (!j.active_sessions.length) {
+      empty.style.display = 'block';
+      document.getElementById('activeSessionsTable').style.display = 'none';
+      return;
+    }
+    empty.style.display = 'none';
+    document.getElementById('activeSessionsTable').style.display = 'table';
+    j.active_sessions.forEach(s => {
+      body.insertAdjacentHTML('beforeend', `
+        <tr>
           <td>${s.track_id}</td>
           <td>${s.enter_timestamp}</td>
           <td>${s.elapsed_seconds}</td>
           <td>${s.predicted_remain}</td>
           <td>${s.is_late}</td>
-        `;
-        tableBody.appendChild(row);
+        </tr>`);
+    });
+  })
+  .catch(err => console.error('active-sessions fetch', err));
+}
+setInterval(refreshActiveSessions, 1000);
+
+Chart.defaults.color = '#d4d8f0';
+Chart.defaults.font.family = "'Segoe UI', sans-serif";
+Chart.defaults.plugins.tooltip.backgroundColor = '#222738';
+Chart.defaults.plugins.tooltip.borderColor = '#5465ff';
+Chart.defaults.plugins.tooltip.borderWidth = 1;
+Chart.defaults.plugins.tooltip.titleColor = '#ffffff';
+Chart.defaults.plugins.tooltip.bodyColor = '#c2c8ff';
+Chart.defaults.plugins.legend.labels.color = '#a5b1ff';
+const gridLines = { color:'rgba(255,255,255,0.06)', borderDash:[4,4] };
+
+function makeChart (id, type, labels, data, isLine=false) {
+  new Chart(document.getElementById(id), {
+    type: type,
+    data: { labels: labels,
+      datasets: [{
+        label: 'Count',
+        data: data,
+        backgroundColor: isLine ? 'transparent' : '#5465ff',
+        borderColor: '#5465ff',
+        borderWidth: 2,
+        tension: 0.3,
+        fill: false,
+        borderRadius: 6,
+        barThickness: 24
+      }]
+    },
+    options: {
+      scales: {
+        x:{ grid:gridLines, ticks:{ color:'#aab2d5' } },
+        y:{ beginAtZero:true, grid:gridLines, ticks:{ color:'#aab2d5' } }
+      }
+    }
+  });
+}
+
+const hourLabels = JSON.parse('{{ hour_labels_json|safe }}');
+const hourCounts = JSON.parse('{{ hour_counts_json|safe }}');
+if (hourLabels.length) {
+  makeChart('peakHoursChart', 'bar', hourLabels, hourCounts);
+}
+
+const distLabels = JSON.parse('{{ dist_labels_json|safe }}');
+const distCounts = JSON.parse('{{ dist_counts_json|safe }}');
+if (distLabels.length) {
+  makeChart('waitDistChart', 'bar', distLabels, distCounts);
+}
+
+const dowLabels = JSON.parse('{{ dow_labels_json|safe }}');
+const dowCounts = JSON.parse('{{ dow_counts_json|safe }}');
+if (dowLabels.length) {
+  makeChart('dowChart', 'bar', dowLabels, dowCounts);
+}
+
+const todLabels = JSON.parse('{{ tod_labels_json|safe }}');
+const todCounts = JSON.parse('{{ tod_counts_json|safe }}');
+if (todLabels.length) {
+  makeChart('todChart', 'line', todLabels, todCounts, true);
+}
+
+const dowWaitLabels = JSON.parse('{{ dow_wait_labels_json|safe }}');
+const dowWaitValues = JSON.parse('{{ dow_wait_values_json|safe }}');
+if (dowWaitLabels.length) {
+  makeChart('dowWaitChart', 'bar', dowWaitLabels, dowWaitValues);
+}
+
+const hodWaitLabels = JSON.parse('{{ hod_wait_labels_json|safe }}');
+const hodWaitValues = JSON.parse('{{ hod_wait_values_json|safe }}');
+if (hodWaitLabels.length) {
+  makeChart('hodWaitChart', 'bar', hodWaitLabels, hodWaitValues);
+}
+
+function toggleFullScreen(containerId) {
+    const elem = document.getElementById(containerId);
+    if (!document.fullscreenElement) {
+      elem.requestFullscreen().catch(err => {
+        console.error(`Fullscreen error: ${err.message}`);
       });
-    })
-    .catch(err => console.error("Error fetching active sessions:", err));
-  }
-  setInterval(refreshActiveSessions, 1000);
-
-  const hourLabels = JSON.parse('{{ hour_labels_json|safe }}');
-  const hourCounts = JSON.parse('{{ hour_counts_json|safe }}');
-  if(hourLabels.length) {
-    const ctxHour = document.getElementById('peakHoursChart').getContext('2d');
-    new Chart(ctxHour, {
-      type: 'bar',
-      data: {
-        labels: hourLabels,
-        datasets: [{
-          label: 'Arrivals by Hour',
-          data: hourCounts,
-          borderWidth: 1
-        }]
-      },
-      options: { scales: { y: { beginAtZero: true } } }
-    });
-  }
-
-  const distLabels = JSON.parse('{{ dist_labels_json|safe }}');
-  const distCounts = JSON.parse('{{ dist_counts_json|safe }}');
-  if(distLabels.length) {
-    const ctxDist = document.getElementById('waitDistChart').getContext('2d');
-    new Chart(ctxDist, {
-      type: 'bar',
-      data: {
-        labels: distLabels,
-        datasets: [{
-          label: 'Number of Sessions',
-          data: distCounts,
-          borderWidth: 1
-        }]
-      }
-    });
-  }
-
-  const dowLabels = JSON.parse('{{ dow_labels_json|safe }}');
-  const dowCounts = JSON.parse('{{ dow_counts_json|safe }}');
-  if(dowLabels.length) {
-    const ctxDOW = document.getElementById('dowChart').getContext('2d');
-    new Chart(ctxDOW, {
-      type: 'bar',
-      data: {
-        labels: dowLabels,
-        datasets: [{
-          label: 'Arrivals by Day-of-Week',
-          data: dowCounts,
-          borderWidth: 1
-        }]
-      }
-    });
-  }
-
-  const todLabels = JSON.parse('{{ tod_labels_json|safe }}');
-  const todCounts = JSON.parse('{{ tod_counts_json|safe }}');
-  if(todLabels.length) {
-    const ctxTOD = document.getElementById('todChart').getContext('2d');
-    new Chart(ctxTOD, {
-      type: 'line',
-      data: {
-        labels: todLabels,
-        datasets: [{
-          label: 'Arrivals by Hour-of-Day',
-          data: todCounts,
-          borderWidth: 2,
-          fill: false
-        }]
-      }
-    });
-  }
-
-  const dowWaitLabels = JSON.parse('{{ dow_wait_labels_json|safe }}');
-  const dowWaitValues = JSON.parse('{{ dow_wait_values_json|safe }}');
-  if(dowWaitLabels.length) {
-    const ctxDOWWait = document.getElementById('dowWaitChart').getContext('2d');
-    new Chart(ctxDOWWait, {
-      type: 'bar',
-      data: {
-        labels: dowWaitLabels,
-        datasets: [{
-          label: 'Avg Wait (min)',
-          data: dowWaitValues,
-          borderWidth: 1
-        }]
-      }
-    });
-  }
-
-  const hodWaitLabels = JSON.parse('{{ hod_wait_labels_json|safe }}');
-  const hodWaitValues = JSON.parse('{{ hod_wait_values_json|safe }}');
-  if(hodWaitLabels.length) {
-    const ctxHODWait = document.getElementById('hodWaitChart').getContext('2d');
-    new Chart(ctxHODWait, {
-      type: 'bar',
-      data: {
-        labels: hodWaitLabels,
-        datasets: [{
-          label: 'Avg Wait (min)',
-          data: hodWaitValues,
-          borderWidth: 1
-        }]
-      }
-    });
+    } else {
+      document.exitFullscreen();
+    }
   }
 </script>
+
 {% endblock %}

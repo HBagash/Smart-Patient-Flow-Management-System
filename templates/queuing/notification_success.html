@@ -1,20 +1,88 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+  body, html {
+    background-color: #171717 !important;
+  }
+
+  main.notification-success {
+    background-color: #171717;
+    min-height: 100vh;
+    padding: 40px 20px;
+    padding-top: 1.5rem;
+    padding-left: 1.5rem;
+    color: #ffffff;
+  }
+
+  .notification-success h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .notification-success p {
+    color: #aab2d5;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+  }
+
+  .notification-success strong {
+    color: #ffffff;
+  }
+
+  .notification-success h5 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .notification-success hr {
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (min-width: 1440px) {
+    .notification-success h2 {
+      font-size: 2.1rem;
+    }
+
+    .notification-success h5 {
+      font-size: 1.6rem;
+    }
+
+    .notification-success p {
+      font-size: 1.05rem;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
+<main class="notification-success">
   <h2>Notification Request Received</h2>
-  <p>Email: <strong>{{ instance.email }}</strong></p>
-  <p>Date: <strong>{{ instance.date }}</strong></p>
-  <p>Time: <strong>{{ instance.time_block|time:"H:i" }}</strong></p>
+  <p>We've sent a confirmation to your email with the details below.</p>
+
+  <p class="mb-1">Email:</p>
+  <p><strong>{{ instance.email }}</strong></p>
+
+  <p class="mb-1">Date:</p>
+  <p><strong>{{ instance.date }}</strong></p>
+
+  <p class="mb-1">Time:</p>
+  <p><strong>{{ instance.time_block|time:"H:i" }}</strong></p>
+
   <hr>
-  <h4>Predicted Wait: {{ display_wait }}</h4>
+
+  <h5>Predicted Wait: {{ display_wait }}</h5>
   <p>
     <strong>Status:</strong>
     <span style="color: {{ status_color }}; font-weight: bold;">
       {{ status_label }}
     </span>
   </p>
-  <p>We've sent a confirmation to your email with these details.</p>
-</div>
+</main>
 {% endblock %}

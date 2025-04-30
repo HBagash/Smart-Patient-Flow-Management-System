@@ -1,0 +1,40 @@
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Meetings
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+main {
+	background-color: #171717;
+	min-height: 100vh;
+	padding: 1.5rem;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Feedback
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+.feedback-thanks h3 {
+	color: #ffffff;
+	font-weight: 600;
+	font-size: 1.8rem;
+}
+
+.feedback-thanks p {
+	color: #aab2d5;
+	font-size: 1rem;
+	margin-bottom: 0.5rem;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Large Display
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+@media (min-width: 1440px) {
+	.feedback-thanks h3 {
+		font-size: 2.2rem;
+	}
+
+	.feedback-thanks p {
+		font-size: 1.05rem;
+	}
+}

@@ -1,0 +1,82 @@
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Background
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+main {
+	background-color: #171717;
+	min-height: 100vh;
+	padding: 1.5rem;
+}
+
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Feedback Form
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+
+.feedback-form h2 {
+	--bs-text-opacity: 1;
+	color: rgba(var(--bs-light-rgb), var(--bs-text-opacity)) !important;
+	margin-bottom: 0;
+}
+
+.feedback-form p {
+	color: #aab2d5;
+	margin-bottom: 2rem;
+	font-size: 0.95rem;
+}
+
+.feedback-form label {
+	color: #aab2d5;
+	font-size: 0.95rem;
+	font-weight: 500;
+	margin-bottom: 6px;
+	display: block;
+}
+
+.feedback-form input {
+	background-color: #0f111a;
+	color: #ffffff;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 8px;
+	padding: 10px 12px;
+	width: 100%;
+	font-size: 1rem;
+	transition: 0.2s ease-in-out;
+}
+
+.feedback-form input:focus {
+	outline: none;
+	border-color: #5465ff;
+	box-shadow: 0 0 0 2px rgba(84, 101, 255, 0.3);
+}
+
+.feedback-form button {
+	background-color: #5465ff;
+	border: none;
+	color: white;
+	font-weight: 600;
+	padding: 10px 22px;
+	font-size: 0.95rem;
+	border-radius: 8px;
+	margin-top: 1rem;
+	transition: background-color 0.2s ease;
+}
+
+.feedback-form button:hover {
+	background-color: #4153e4;
+}
+
+/* ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~*\
+    @Large Display
+\*~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ */
+@media (min-width: 1440px) {
+	.feedback-form h2 {
+		font-size: 2.1rem;
+	}
+
+	.feedback-form p,
+	.feedback-form label,
+	.feedback-form input {
+		font-size: 1.05rem;
+	}
+}
