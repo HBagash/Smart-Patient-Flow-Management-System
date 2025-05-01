@@ -12,6 +12,10 @@ class AuthFlowTests(TestCase):
             username="demo", password=self.password, email="demo@mail.com", is_staff=True
         )
 
+    def test_register_page_loads(self):
+        resp = self.client.get(reverse("register"))
+        self.assertEqual(resp.status_code, 200)
+
     def test_register_creates_user_and_logs_in(self):
         resp = self.client.post(
             reverse("register"),
@@ -27,7 +31,6 @@ class AuthFlowTests(TestCase):
         self.assertTrue(resp.context["user"].is_authenticated)
 
     def test_login_and_logout(self):
-        # login
         resp = self.client.post(
             reverse("login"),
             {"username": "demo", "password": self.password},
@@ -35,6 +38,5 @@ class AuthFlowTests(TestCase):
         )
         self.assertTrue(resp.context["user"].is_authenticated)
 
-        # logout
         resp2 = self.client.post(reverse("logout"), follow=True)
         self.assertFalse(resp2.context["user"].is_authenticated)
