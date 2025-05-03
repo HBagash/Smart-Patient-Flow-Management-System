@@ -1,4 +1,4 @@
-# Smart-Patient-Flow-Management-System
+# Smart-Flow-Management-System
 
 If you're running into permission issues when attempting to operate this software enter this command in powershell: Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
 
