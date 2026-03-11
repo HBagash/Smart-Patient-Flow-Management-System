@@ -30,22 +30,26 @@ def predict_appointment_kalman(appt_datetime, weeks_lookback=8, exclude_outliers
     ).filter(
         dw=d_of_w,
         hh=hr
-    )
+    ).order_by('enter_timestamp')  # oldest first so recent sessions carry more weight
 
     if exclude_outliers:
         qs = qs.filter(duration_seconds__gt=1)
         qs = _exclude_outliers_qs(qs, 'duration_seconds')
 
-    if not qs.exists():
+    sessions = list(qs)
+
+    if not sessions:
         return 600.0
 
-    x = 600.0
-    P = 500.0
-    Q = 100.0
+    # Initialise from the oldest matching session rather than a hardcoded value,
+    # so sparse time slots aren't anchored to an arbitrary 10-minute prior.
+    x = float(sessions[0].duration_seconds or 600.0)
+    P = 1000.0  # high initial uncertainty — let the data speak quickly
+    Q = 50.0    # small process noise: expected wait time changes slowly over time
     R = 200.0
 
-    for session in qs:
-        meas = float(session.duration_seconds or 600.0)
+    for session in sessions[1:]:
+        meas = float(session.duration_seconds or x)
         x, P = kalman_filter_update(meas, x, P, Q, R)
 
     return x

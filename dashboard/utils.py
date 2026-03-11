@@ -4,18 +4,18 @@ from django.db.models.functions import TruncHour, ExtractWeekDay, ExtractHour, C
 from django.utils import timezone
 from detection.models import PersonSession
 
-def _exclude_outliers_qs(qs, field='duration_seconds', threshold=3, min_value=2):
+def _exclude_outliers_qs(qs, field='duration_seconds', min_value=2):
     qs = qs.filter(**{f'{field}__gte': min_value})
-    agg = qs.aggregate(mean_val=Avg(field), count_val=Count(field))
-    mean_val = agg['mean_val'] or 0.0
-    count_val = agg['count_val'] or 0
-    if count_val < 2:
+    values = sorted(float(v) for v in qs.values_list(field, flat=True))
+    n = len(values)
+    if n < 4:
         return qs
-    values = [float(v) for v in qs.values_list(field, flat=True)]
-    variance = sum((v - mean_val)**2 for v in values) / (count_val - 1)
-    std_val = variance**0.5
-    cutoff = mean_val + threshold*std_val
-    return qs.filter(**{f'{field}__lte': cutoff})
+    Q1 = values[n // 4]
+    Q3 = values[(3 * n) // 4]
+    IQR = Q3 - Q1
+    lower = max(float(min_value), Q1 - 1.5 * IQR)
+    upper = Q3 + 1.5 * IQR
+    return qs.filter(**{f'{field}__gte': lower, f'{field}__lte': upper})
 
 def get_overview_data(exclude_outliers=False, base_qs=None, custom_start=None, custom_end=None):
     if base_qs is None:

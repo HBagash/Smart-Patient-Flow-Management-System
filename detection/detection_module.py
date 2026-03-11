@@ -12,6 +12,8 @@ DETECTION_ZONES = None
 REFRESH_INTERVAL = 0
 CONFIDENCE_THRESHOLD = 0.35
 TRACKER_CONFIG = 'bytetrack.yaml'
+REID_MAX_SECONDS_AWAY = 300    # how far back to search for a returning person (seconds)
+REID_SIMILARITY_THRESHOLD = 0.75  # minimum HSV histogram correlation to accept a re-ID match
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "yolov8x.pt")
 model = YOLO(MODEL_PATH)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -40,6 +42,36 @@ def extract_appearance_feature(frame, bbox):
     hist = cv2.calcHist([hsv], [0, 1, 2], None, [8,8,8], [0,180,0,256,0,256])
     cv2.normalize(hist, hist)
     return hist.flatten().tolist()
+
+def find_matching_session(frame, bbox, PersonSession):
+    """
+    Compare the current detection's appearance against recently exited sessions.
+    Returns the best-matching PersonSession if correlation exceeds REID_SIMILARITY_THRESHOLD,
+    otherwise returns None.
+    """
+    new_feature = extract_appearance_feature(frame, bbox)
+    if new_feature is None:
+        return None
+    new_hist = np.array(new_feature, dtype=np.float32)
+    cutoff = timezone.now() - timezone.timedelta(seconds=REID_MAX_SECONDS_AWAY)
+    recent_exits = PersonSession.objects.filter(
+        exit_timestamp__gte=cutoff,
+        appearance_feature__isnull=False
+    ).order_by('-exit_timestamp')
+    best_match = None
+    best_score = REID_SIMILARITY_THRESHOLD
+    for session in recent_exits:
+        stored = session.appearance_feature
+        if not stored:
+            continue
+        stored_hist = np.array(stored, dtype=np.float32)
+        if stored_hist.shape != new_hist.shape:
+            continue
+        score = cv2.compareHist(new_hist, stored_hist, cv2.HISTCMP_CORREL)
+        if score > best_score:
+            best_score = score
+            best_match = session
+    return best_match
 
 def compute_iou(boxA, boxB):
     xA = max(boxA[0], boxB[0])
@@ -123,12 +155,25 @@ def detection_loop():
                 bbox = t['bbox']
                 current_ids.add(norm_id)
                 if not PersonSession.objects.filter(track_id=norm_id, exit_timestamp__isnull=True).exists():
-                    feature = extract_appearance_feature(frame, bbox)
-                    PersonSession.objects.create(
-                        track_id=norm_id,
-                        enter_timestamp=timezone.now(),
-                        appearance_feature=feature
-                    )
+                    matched = find_matching_session(frame, bbox, PersonSession)
+                    if matched:
+                        # Same person returning — re-open the existing session under the new tracker ID
+                        # so they aren't counted as a new arrival and their original enter time is kept.
+                        matched.track_id = norm_id
+                        matched.exit_timestamp = None
+                        matched.duration_seconds = None
+                        matched.active = True
+                        fresh_feature = extract_appearance_feature(frame, bbox)
+                        if fresh_feature is not None:
+                            matched.appearance_feature = fresh_feature
+                        matched.save()
+                    else:
+                        feature = extract_appearance_feature(frame, bbox)
+                        PersonSession.objects.create(
+                            track_id=norm_id,
+                            enter_timestamp=timezone.now(),
+                            appearance_feature=feature
+                        )
             for norm_id in set().union(*[{s.track_id} for s in PersonSession.objects.filter(exit_timestamp__isnull=True)]) - current_ids:
                 session = PersonSession.objects.filter(track_id=norm_id, exit_timestamp__isnull=True).first()
                 if session:
